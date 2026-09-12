@@ -22,7 +22,7 @@ import (
 
 type middleware func(http.Handler) http.Handler
 
-func nosniff(next http.Handler) http.Handler {
+func Nosniff(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
 		responseWriter.Header().Set("X-Content-Type-Options", "nosniff")
 		next.ServeHTTP(responseWriter, request)

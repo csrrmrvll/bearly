@@ -141,7 +141,7 @@ func New(database *sql.DB, logger *logging.Logger, options Options) (*Applicatio
 		return nil, err
 	}
 	dynamicMux := http.NewServeMux()
-	dynamicMux.HandleFunc("GET /{$}", storefrontHandler.Storefront)
+	dynamicMux.Handle("GET /{$}", Nosniff(http.HandlerFunc(storefrontHandler.Storefront)))
 	dynamicMux.HandleFunc("GET /search", storefrontHandler.Search)
 	dynamicMux.HandleFunc("GET /products/{id}", storefrontHandler.Product)
 	dynamicMux.HandleFunc("GET /api/account/orders", apiHandler.AccountOrders)
@@ -209,11 +209,11 @@ func New(database *sql.DB, logger *logging.Logger, options Options) (*Applicatio
 	dynamicMux.HandleFunc("GET /admin/products/{id}/edit", adminHandler.EditProduct)
 	dynamicMux.Handle("POST /admin/products/{id}", parseForm(options.MaxRequestBodyBytes, renderer)(http.HandlerFunc(adminHandler.UpdateProduct)))
 	dynamicMux.HandleFunc("GET /admin/products/{id}", adminHandler.Product)
-	dynamicMux.HandleFunc("/", func(responseWriter http.ResponseWriter, _ *http.Request) {
+	dynamicMux.Handle("/", Nosniff(http.HandlerFunc(func(responseWriter http.ResponseWriter, _ *http.Request) {
 		if err := httpx.RespondWithErrorPage(responseWriter, renderer, http.StatusNotFound, "Page Not Found", "We couldn't find the page you requested."); err != nil {
 			http.Error(responseWriter, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		}
-	})
+	})))
 
 	dynamicHandler := permissiveCORS(dynamicMux)
 
@@ -221,7 +221,7 @@ func New(database *sql.DB, logger *logging.Logger, options Options) (*Applicatio
 	mainMux.HandleFunc("GET /health", func(responseWriter http.ResponseWriter, _ *http.Request) {
 		httpx.RespondWithJSON(responseWriter, http.StatusOK, map[string]any{"ok": true, "app": "bearly-secure"})
 	})
-	staticHandler := nosniff(newStaticHandler(publicRoot))
+	staticHandler := Nosniff(newStaticHandler(publicRoot))
 	mainMux.Handle("GET /reset.css", staticHandler)
 	mainMux.Handle("GET /styles.css", staticHandler)
 	mainMux.Handle("GET /passkey.js", staticHandler)
