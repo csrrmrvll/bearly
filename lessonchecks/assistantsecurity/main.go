@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/bootdotdev/learn-web-security/internal/assistant"
+	"github.com/csrrmrvll/bearly/internal/assistant"
 )
 
 type results struct {

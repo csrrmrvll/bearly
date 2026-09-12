@@ -6,12 +6,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bootdotdev/learn-web-security/internal/accounts"
-	"github.com/bootdotdev/learn-web-security/internal/auth/sessions"
-	"github.com/bootdotdev/learn-web-security/internal/httpx"
-	"github.com/bootdotdev/learn-web-security/internal/imagepreview"
-	"github.com/bootdotdev/learn-web-security/internal/logging"
-	"github.com/bootdotdev/learn-web-security/internal/templates"
+	"github.com/csrrmrvll/bearly/internal/accounts"
+	"github.com/csrrmrvll/bearly/internal/auth/sessions"
+	"github.com/csrrmrvll/bearly/internal/httpx"
+	"github.com/csrrmrvll/bearly/internal/imagepreview"
+	"github.com/csrrmrvll/bearly/internal/logging"
+	"github.com/csrrmrvll/bearly/internal/templates"
 )
 
 type dashboardPage struct {

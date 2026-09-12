@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/bootdotdev/learn-web-security/internal/auth/mfa"
-	"github.com/bootdotdev/learn-web-security/internal/database"
+	"github.com/csrrmrvll/bearly/internal/auth/mfa"
+	"github.com/csrrmrvll/bearly/internal/database"
 	"github.com/pquerna/otp/totp"
 )
 

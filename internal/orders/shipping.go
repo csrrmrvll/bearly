@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/bootdotdev/learn-web-security/internal/storage"
+	"github.com/csrrmrvll/bearly/internal/storage"
 )
 
 type ShippingDetails struct {

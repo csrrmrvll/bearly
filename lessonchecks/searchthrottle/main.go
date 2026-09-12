@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bootdotdev/learn-web-security/internal/httpserver"
-	"github.com/bootdotdev/learn-web-security/internal/templates"
+	"github.com/csrrmrvll/bearly/internal/httpserver"
+	"github.com/csrrmrvll/bearly/internal/templates"
 )
 
 const searchThrottleLimit = 5

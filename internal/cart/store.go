@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/bootdotdev/learn-web-security/internal/database/dbgen"
+	"github.com/csrrmrvll/bearly/internal/database/dbgen"
 )
 
 const MaximumQuantity = 99

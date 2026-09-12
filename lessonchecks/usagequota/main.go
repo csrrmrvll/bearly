@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bootdotdev/learn-web-security/internal/database"
+	"github.com/csrrmrvll/bearly/internal/database"
 )
 
 const (

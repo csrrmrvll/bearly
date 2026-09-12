@@ -6,8 +6,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/bootdotdev/learn-web-security/internal/templates"
-	"github.com/bootdotdev/learn-web-security/internal/textutils"
+	"github.com/csrrmrvll/bearly/internal/templates"
+	"github.com/csrrmrvll/bearly/internal/textutils"
 )
 
 func RespondWithError(responseWriter http.ResponseWriter, code int, message string) {

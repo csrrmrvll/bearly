@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"github.com/bootdotdev/learn-web-security/internal/uploads"
+	"github.com/csrrmrvll/bearly/internal/uploads"
 )
 
 type results struct {

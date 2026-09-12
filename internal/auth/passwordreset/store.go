@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bootdotdev/learn-web-security/internal/database/dbgen"
+	"github.com/csrrmrvll/bearly/internal/database/dbgen"
 )
 
 const tokenTTL = 30 * 24 * time.Hour

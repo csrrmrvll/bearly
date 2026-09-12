@@ -19,9 +19,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/bootdotdev/learn-web-security/internal/database"
-	"github.com/bootdotdev/learn-web-security/internal/logging"
-	"github.com/bootdotdev/learn-web-security/internal/storage"
+	"github.com/csrrmrvll/bearly/internal/database"
+	"github.com/csrrmrvll/bearly/internal/logging"
+	"github.com/csrrmrvll/bearly/internal/storage"
 )
 
 func TestLessonEndpointRateLimiter(t *testing.T) {

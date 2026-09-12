@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/bootdotdev/learn-web-security/internal/logging"
+	"github.com/csrrmrvll/bearly/internal/logging"
 )
 
 const redactedValue = "[REDACTED]"

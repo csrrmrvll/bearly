@@ -10,27 +10,27 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/bootdotdev/learn-web-security/internal/account"
-	"github.com/bootdotdev/learn-web-security/internal/accounts"
-	"github.com/bootdotdev/learn-web-security/internal/admin"
-	"github.com/bootdotdev/learn-web-security/internal/api"
-	"github.com/bootdotdev/learn-web-security/internal/assistant"
-	"github.com/bootdotdev/learn-web-security/internal/auth/mfa"
-	"github.com/bootdotdev/learn-web-security/internal/auth/passkeys"
-	"github.com/bootdotdev/learn-web-security/internal/auth/passwordreset"
-	"github.com/bootdotdev/learn-web-security/internal/cart"
-	"github.com/bootdotdev/learn-web-security/internal/checkout"
-	"github.com/bootdotdev/learn-web-security/internal/httpx"
-	"github.com/bootdotdev/learn-web-security/internal/imagepreview"
-	"github.com/bootdotdev/learn-web-security/internal/integrations/pawpal"
-	"github.com/bootdotdev/learn-web-security/internal/logging"
-	"github.com/bootdotdev/learn-web-security/internal/orders"
-	"github.com/bootdotdev/learn-web-security/internal/reviews"
-	"github.com/bootdotdev/learn-web-security/internal/storage"
-	"github.com/bootdotdev/learn-web-security/internal/storefront"
-	"github.com/bootdotdev/learn-web-security/internal/support"
-	"github.com/bootdotdev/learn-web-security/internal/templates"
-	"github.com/bootdotdev/learn-web-security/internal/uploads"
+	"github.com/csrrmrvll/bearly/internal/account"
+	"github.com/csrrmrvll/bearly/internal/accounts"
+	"github.com/csrrmrvll/bearly/internal/admin"
+	"github.com/csrrmrvll/bearly/internal/api"
+	"github.com/csrrmrvll/bearly/internal/assistant"
+	"github.com/csrrmrvll/bearly/internal/auth/mfa"
+	"github.com/csrrmrvll/bearly/internal/auth/passkeys"
+	"github.com/csrrmrvll/bearly/internal/auth/passwordreset"
+	"github.com/csrrmrvll/bearly/internal/cart"
+	"github.com/csrrmrvll/bearly/internal/checkout"
+	"github.com/csrrmrvll/bearly/internal/httpx"
+	"github.com/csrrmrvll/bearly/internal/imagepreview"
+	"github.com/csrrmrvll/bearly/internal/integrations/pawpal"
+	"github.com/csrrmrvll/bearly/internal/logging"
+	"github.com/csrrmrvll/bearly/internal/orders"
+	"github.com/csrrmrvll/bearly/internal/reviews"
+	"github.com/csrrmrvll/bearly/internal/storage"
+	"github.com/csrrmrvll/bearly/internal/storefront"
+	"github.com/csrrmrvll/bearly/internal/support"
+	"github.com/csrrmrvll/bearly/internal/templates"
+	"github.com/csrrmrvll/bearly/internal/uploads"
 )
 
 const (
@@ -221,7 +221,7 @@ func New(database *sql.DB, logger *logging.Logger, options Options) (*Applicatio
 	mainMux.HandleFunc("GET /health", func(responseWriter http.ResponseWriter, _ *http.Request) {
 		httpx.RespondWithJSON(responseWriter, http.StatusOK, map[string]any{"ok": true, "app": "bearly-secure"})
 	})
-	staticHandler := newStaticHandler(publicRoot)
+	staticHandler := nosniff(newStaticHandler(publicRoot))
 	mainMux.Handle("GET /reset.css", staticHandler)
 	mainMux.Handle("GET /styles.css", staticHandler)
 	mainMux.Handle("GET /passkey.js", staticHandler)

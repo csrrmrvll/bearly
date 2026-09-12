@@ -5,8 +5,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bootdotdev/learn-web-security/internal/httpx"
-	"github.com/bootdotdev/learn-web-security/internal/templates"
+	"github.com/csrrmrvll/bearly/internal/httpx"
+	"github.com/csrrmrvll/bearly/internal/templates"
 )
 
 var (

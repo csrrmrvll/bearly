@@ -12,8 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/bootdotdev/learn-web-security/internal/attackerlab"
-	"github.com/bootdotdev/learn-web-security/internal/config"
+	"github.com/csrrmrvll/bearly/internal/attackerlab"
+	"github.com/csrrmrvll/bearly/internal/config"
 )
 
 func main() {

@@ -19,8 +19,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/bootdotdev/learn-web-security/internal/database"
-	"github.com/bootdotdev/learn-web-security/internal/httpserver"
+	"github.com/csrrmrvll/bearly/internal/database"
+	"github.com/csrrmrvll/bearly/internal/httpserver"
 )
 
 const (

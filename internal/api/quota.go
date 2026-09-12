@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/bootdotdev/learn-web-security/internal/httpx"
+	"github.com/csrrmrvll/bearly/internal/httpx"
 )
 
 type QuotaResponse struct {

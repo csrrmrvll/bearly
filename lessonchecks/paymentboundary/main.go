@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bootdotdev/learn-web-security/internal/database"
+	"github.com/csrrmrvll/bearly/internal/database"
 	"github.com/joho/godotenv"
 )
 

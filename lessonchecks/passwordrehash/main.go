@@ -12,8 +12,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/bootdotdev/learn-web-security/internal/auth/passwords"
-	"github.com/bootdotdev/learn-web-security/internal/database"
+	"github.com/csrrmrvll/bearly/internal/auth/passwords"
+	"github.com/csrrmrvll/bearly/internal/database"
 	"github.com/joho/godotenv"
 )
 

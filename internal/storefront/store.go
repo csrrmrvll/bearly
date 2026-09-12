@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/bootdotdev/learn-web-security/internal/database/dbgen"
+	"github.com/csrrmrvll/bearly/internal/database/dbgen"
 )
 
 type Product struct {

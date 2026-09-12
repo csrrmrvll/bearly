@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/bootdotdev/learn-web-security/internal/auth/passwords"
-	"github.com/bootdotdev/learn-web-security/internal/database/dbgen"
+	"github.com/csrrmrvll/bearly/internal/auth/passwords"
+	"github.com/csrrmrvll/bearly/internal/database/dbgen"
 )
 
 const (
