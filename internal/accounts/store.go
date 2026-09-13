@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/csrrmrvll/bearly/internal/database/dbgen"
@@ -20,7 +21,7 @@ const defaultSessionTTL = 30 * 24 * time.Hour
 var ErrEmailExists = errors.New("an account already exists for that email")
 
 func NormalizeEmail(email string) string {
-	return email
+	return strings.ToLower(strings.TrimSpace(email))
 }
 
 type User struct {
@@ -61,6 +62,7 @@ func NewStore(database *sql.DB) *Store {
 }
 
 func (store *Store) FindUserByEmail(ctx context.Context, email string) (User, bool, error) {
+	email = NormalizeEmail(email)
 	row, err := store.queries.GetUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -104,7 +106,7 @@ func (store *Store) FindUserByID(ctx context.Context, userID int64) (User, bool,
 
 func (store *Store) CreateCustomer(ctx context.Context, email, displayName, passwordHash string) (User, error) {
 	userID, err := store.queries.CreateCustomer(ctx, dbgen.CreateCustomerParams{
-		Email:        email,
+		Email:        NormalizeEmail(email),
 		DisplayName:  displayName,
 		PasswordHash: passwordHash,
 	})
@@ -132,7 +134,7 @@ func (store *Store) UpdatePasswordHash(ctx context.Context, userID int64, passwo
 }
 
 func (store *Store) UpdateEmail(ctx context.Context, userID int64, email string) error {
-	_, err := store.queries.UpdateUserEmail(ctx, dbgen.UpdateUserEmailParams{Email: email, ID: userID})
+	_, err := store.queries.UpdateUserEmail(ctx, dbgen.UpdateUserEmailParams{Email: NormalizeEmail(email), ID: userID})
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrEmailExists
 	}
