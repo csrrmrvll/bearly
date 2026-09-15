@@ -65,7 +65,8 @@ func (handler *Handler) Page(responseWriter http.ResponseWriter, request *http.R
 		"userId":    current.User.ID,
 		"email":     current.User.Email,
 		"expiresAt": formatTimestamp(current.Session.ExpiresAt),
-	})	if err := handler.renderPage(responseWriter, http.StatusOK, current, ""); err != nil {
+	})
+	if err := handler.renderPage(responseWriter, http.StatusOK, current, ""); err != nil {
 		handler.internalError(responseWriter, request, err)
 	}
 }
