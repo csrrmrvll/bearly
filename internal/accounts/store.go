@@ -193,6 +193,9 @@ func (store *Store) CurrentSession(ctx context.Context, token string) (CurrentSe
 	if err != nil || !store.now().Before(expiresAt) {
 		return CurrentSession{}, false, nil
 	}
+	if row.RevokedAt != nil {
+		return CurrentSession{}, false, nil
+	}
 	user, found, err := store.FindUserByID(ctx, row.UserID)
 	if err != nil || !found {
 		return CurrentSession{}, false, err
