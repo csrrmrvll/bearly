@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/csrrmrvll/bearly/internal/accounts"
 	"github.com/csrrmrvll/bearly/internal/auth/sessions"
@@ -95,6 +96,16 @@ func (handler *Handler) Products(responseWriter http.ResponseWriter, request *ht
 }
 
 func (handler *Handler) WarehouseOrders(responseWriter http.ResponseWriter, request *http.Request) {
+	apiKey := request.Header.Get("X-API-Key")
+	key, found, err := handler.apiStore.FindKey(request.Context(), apiKey)
+	if err != nil || !found {
+		httpx.RespondWithError(responseWriter, http.StatusUnauthorized, "Missing or invalid API key")
+		return
+	}
+	if strings.Contains(key.Scope, "orders:read") == false {
+		httpx.RespondWithError(responseWriter, http.StatusForbidden, "API key does not have the required scope")
+		return
+	}
 	orders, err := handler.orderStore.ListAll(request.Context())
 	if err != nil {
 		handler.internalError(responseWriter, request, err)
