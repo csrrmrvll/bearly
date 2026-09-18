@@ -10,6 +10,7 @@ import (
 
 	"github.com/csrrmrvll/bearly/internal/accounts"
 	"github.com/csrrmrvll/bearly/internal/auth/mfa"
+	"github.com/csrrmrvll/bearly/internal/auth/passwords"
 	"github.com/csrrmrvll/bearly/internal/auth/sessions"
 	"github.com/csrrmrvll/bearly/internal/httpx"
 	"github.com/csrrmrvll/bearly/internal/logging"
@@ -84,6 +85,18 @@ func (handler *Handler) UpdateEmail(responseWriter http.ResponseWriter, request 
 	email = accounts.NormalizeEmail(email)
 	if email == "" {
 		if err := handler.renderPage(responseWriter, http.StatusBadRequest, current, "Email is required."); err != nil {
+			handler.internalError(responseWriter, request, err)
+		}
+		return
+	}
+	currentPassword, err := httpx.FormValue(request, "currentPassword")
+	if err != nil {
+		handler.errorPage(responseWriter, http.StatusBadRequest, "Invalid Request", "The submitted form is invalid.")
+		return
+	}
+	passwordValid := passwords.Verify(currentPassword, current.User.PasswordHash)
+	if !passwordValid {
+		if err := handler.renderPage(responseWriter, http.StatusForbidden, current, "Current password is incorrect."); err != nil {
 			handler.internalError(responseWriter, request, err)
 		}
 		return
