@@ -299,9 +299,6 @@ func (store *Store) ConsumeBackupCode(ctx context.Context, userID int64, code st
 		CodeHash: hashToken(code),
 	})
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return false, nil
-		}
 		return false, fmt.Errorf("consume TOTP backup code: %w", err)
 	}
 	rowsAffected, err := result.RowsAffected()
