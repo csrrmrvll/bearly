@@ -3,7 +3,6 @@ package checkout
 import (
 	"errors"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -255,9 +254,4 @@ func firstUnavailable(items []cart.Item) *cart.Item {
 		}
 	}
 	return nil
-}
-
-func parseDiscount(value string) int64 {
-	discount, _ := strconv.ParseInt(value, 10, 64)
-	return discount
 }
