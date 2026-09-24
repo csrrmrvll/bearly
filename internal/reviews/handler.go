@@ -97,7 +97,7 @@ func (handler *Handler) Edit(responseWriter http.ResponseWriter, request *http.R
 	if !ok {
 		return
 	}
-	review, found := handler.requireReview(responseWriter, request)
+	review, found := handler.requireReview(responseWriter, request, current.User.ID)
 	if !found {
 		return
 	}
@@ -111,7 +111,7 @@ func (handler *Handler) Update(responseWriter http.ResponseWriter, request *http
 	if !ok || !handler.verifyCSRF(responseWriter, request, current.Session.CSRFToken) {
 		return
 	}
-	review, found := handler.requireReview(responseWriter, request)
+	review, found := handler.requireReview(responseWriter, request, current.User.ID)
 	if !found {
 		return
 	}
@@ -147,7 +147,7 @@ func (handler *Handler) Delete(responseWriter http.ResponseWriter, request *http
 	if !ok || !handler.verifyCSRF(responseWriter, request, current.Session.CSRFToken) {
 		return
 	}
-	review, found := handler.requireReview(responseWriter, request)
+	review, found := handler.requireReview(responseWriter, request, current.User.ID)
 	if !found {
 		return
 	}
@@ -158,7 +158,7 @@ func (handler *Handler) Delete(responseWriter http.ResponseWriter, request *http
 	http.Redirect(responseWriter, request, "/account/reviews", http.StatusFound)
 }
 
-func (handler *Handler) requireReview(responseWriter http.ResponseWriter, request *http.Request) (Review, bool) {
+func (handler *Handler) requireReview(responseWriter http.ResponseWriter, request *http.Request, userID int64) (Review, bool) {
 	reviewID, valid := httpx.ParseSafeInteger(request.PathValue("id"))
 	if !valid {
 		handler.reviewNotFound(responseWriter)
@@ -170,6 +170,10 @@ func (handler *Handler) requireReview(responseWriter http.ResponseWriter, reques
 		return Review{}, false
 	}
 	if !found {
+		handler.reviewNotFound(responseWriter)
+		return Review{}, false
+	}
+	if review.UserID != userID {
 		handler.reviewNotFound(responseWriter)
 		return Review{}, false
 	}
