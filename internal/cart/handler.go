@@ -1,8 +1,6 @@
 package cart
 
 import (
-	"fmt"
-	"math"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -13,6 +11,8 @@ import (
 	"github.com/csrrmrvll/bearly/internal/logging"
 	"github.com/csrrmrvll/bearly/internal/templates"
 )
+
+var cartQuantityPattern = regexp.MustCompile(`^(0|[1-9]\d?)$`)
 
 type itemView struct {
 	Item
@@ -189,17 +189,9 @@ func makeItemViews(items []Item) []itemView {
 }
 
 func parseQuantity(value string, minimum int64) (int64, bool) {
-	if value != "0" {
-		valid, err := regexp.MatchString(`^\d{0,2}$`, value)
-		if err != nil || !valid {
-			fmt.Println("Error parsing quantity:", err)
-			return 0, false
-		}
-	}
-	parsed, err := strconv.ParseFloat(value, 64)
-	if err != nil || math.IsNaN(parsed) || math.IsInf(parsed, 0) || parsed != math.Trunc(parsed) {
+	if !cartQuantityPattern.MatchString(value) {
 		return 0, false
 	}
-	quantity := int64(parsed)
-	return quantity, quantity >= minimum && quantity <= MaximumQuantity
+	quantity, err := strconv.ParseInt(value, 10, 64)
+	return quantity, err == nil && quantity >= minimum && quantity <= MaximumQuantity
 }
