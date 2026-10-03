@@ -1,8 +1,10 @@
 package cart
 
 import (
+	"fmt"
 	"math"
 	"net/http"
+	"regexp"
 	"strconv"
 
 	"github.com/csrrmrvll/bearly/internal/accounts"
@@ -187,6 +189,13 @@ func makeItemViews(items []Item) []itemView {
 }
 
 func parseQuantity(value string, minimum int64) (int64, bool) {
+	if value != "0" {
+		valid, err := regexp.MatchString(`^\d{0,2}$`, value)
+		if err != nil || !valid {
+			fmt.Println("Error parsing quantity:", err)
+			return 0, false
+		}
+	}
 	parsed, err := strconv.ParseFloat(value, 64)
 	if err != nil || math.IsNaN(parsed) || math.IsInf(parsed, 0) || parsed != math.Trunc(parsed) {
 		return 0, false
