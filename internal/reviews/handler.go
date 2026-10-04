@@ -3,6 +3,8 @@ package reviews
 import (
 	"net/http"
 	"strconv"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/csrrmrvll/bearly/internal/accounts"
 	"github.com/csrrmrvll/bearly/internal/auth/sessions"
@@ -10,6 +12,8 @@ import (
 	"github.com/csrrmrvll/bearly/internal/logging"
 	"github.com/csrrmrvll/bearly/internal/templates"
 )
+
+const maximumBodyLength = 1000
 
 type listPageView struct {
 	templates.Page
@@ -233,5 +237,6 @@ func parseRating(value string) (int64, bool) {
 }
 
 func parseBody(value string) (string, bool) {
-	return value, value != ""
+	body := strings.TrimSpace(value)
+	return body, body != "" && utf8.RuneCountInString(body) <= maximumBodyLength
 }
