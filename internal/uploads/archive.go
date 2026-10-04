@@ -75,6 +75,21 @@ func ExtractTaxDocumentArchive(encryptionKeyring Keyring, contents []byte, extra
 			plannedEntries = append(plannedEntries, plannedArchiveEntry{directory: true, destination: entryDestination})
 			continue
 		}
+		if strings.HasPrefix(entry.Name, "/") {
+			return ExtractedTaxDocumentArchive{}, &ArchiveImportError{Message: "Archive contains an entry with a leading slash.", StatusCode: 400}
+		}
+		if strings.Contains(entry.Name, "\\") {
+			return ExtractedTaxDocumentArchive{}, &ArchiveImportError{Message: "Archive contains an entry with a backslash.", StatusCode: 400}
+		}
+		if entry.FileInfo().Mode()&os.ModeSymlink != 0 {
+			return ExtractedTaxDocumentArchive{}, &ArchiveImportError{Message: "Archive contains a symbolic link.", StatusCode: 400}
+		}
+		if entry.FileInfo().Mode()&os.ModeDevice != 0 {
+			return ExtractedTaxDocumentArchive{}, &ArchiveImportError{Message: "Archive contains a device file.", StatusCode: 400}
+		}
+		if !isInsideDirectory(importDirectory, entryDestination) {
+			return ExtractedTaxDocumentArchive{}, &ArchiveImportError{Message: "Archive contains an entry outside the extraction directory.", StatusCode: 400}
+		}
 		entryContents, err := readArchiveEntry(entry)
 		if err != nil {
 			return ExtractedTaxDocumentArchive{}, &ArchiveImportError{Message: "Choose a valid ZIP archive.", StatusCode: 400}
@@ -186,4 +201,15 @@ func discardArchiveAfterWriteFailure(archive ExtractedTaxDocumentArchive, err er
 		return ExtractedTaxDocumentArchive{}, errors.Join(err, discardErr)
 	}
 	return ExtractedTaxDocumentArchive{}, err
+}
+
+func isInsideDirectory(directory, candidatePath string) bool {
+	relPath, err := filepath.Rel(directory, candidatePath)
+	if err != nil ||
+		relPath == "" || relPath == ".." ||
+		strings.HasPrefix(relPath, ".."+string(os.PathSeparator)) ||
+		filepath.IsAbs(relPath) {
+		return false
+	}
+	return true
 }
