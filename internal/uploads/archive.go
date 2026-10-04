@@ -68,27 +68,15 @@ func ExtractTaxDocumentArchive(encryptionKeyring Keyring, contents []byte, extra
 	plannedEntries := make([]plannedArchiveEntry, 0, len(archiveReader.File))
 	for _, entry := range archiveReader.File {
 		entryDestination := filepath.Join(importDirectory, entry.Name)
+		if filepath.IsAbs(entry.Name) || strings.Contains(entry.Name, "\\") || !isInsideDirectory(importDirectory, entryDestination) || entry.FileInfo().Mode()&os.ModeSymlink != 0 {
+			return ExtractedTaxDocumentArchive{}, &ArchiveImportError{Message: "Archive contains an unsafe entry path.", StatusCode: 400}
+		}
 		if isIgnoredArchiveEntry(entry.Name) {
 			continue
 		}
 		if strings.HasSuffix(entry.Name, "/") {
 			plannedEntries = append(plannedEntries, plannedArchiveEntry{directory: true, destination: entryDestination})
 			continue
-		}
-		if strings.HasPrefix(entry.Name, "/") {
-			return ExtractedTaxDocumentArchive{}, &ArchiveImportError{Message: "Archive contains an entry with a leading slash.", StatusCode: 400}
-		}
-		if strings.Contains(entry.Name, "\\") {
-			return ExtractedTaxDocumentArchive{}, &ArchiveImportError{Message: "Archive contains an entry with a backslash.", StatusCode: 400}
-		}
-		if entry.FileInfo().Mode()&os.ModeSymlink != 0 {
-			return ExtractedTaxDocumentArchive{}, &ArchiveImportError{Message: "Archive contains a symbolic link.", StatusCode: 400}
-		}
-		if entry.FileInfo().Mode()&os.ModeDevice != 0 {
-			return ExtractedTaxDocumentArchive{}, &ArchiveImportError{Message: "Archive contains a device file.", StatusCode: 400}
-		}
-		if !isInsideDirectory(importDirectory, entryDestination) {
-			return ExtractedTaxDocumentArchive{}, &ArchiveImportError{Message: "Archive contains an entry outside the extraction directory.", StatusCode: 400}
 		}
 		entryContents, err := readArchiveEntry(entry)
 		if err != nil {
@@ -204,12 +192,6 @@ func discardArchiveAfterWriteFailure(archive ExtractedTaxDocumentArchive, err er
 }
 
 func isInsideDirectory(directory, candidatePath string) bool {
-	relPath, err := filepath.Rel(directory, candidatePath)
-	if err != nil ||
-		relPath == "" || relPath == ".." ||
-		strings.HasPrefix(relPath, ".."+string(os.PathSeparator)) ||
-		filepath.IsAbs(relPath) {
-		return false
-	}
-	return true
+	relativePath, err := filepath.Rel(directory, candidatePath)
+	return err == nil && relativePath != "." && relativePath != ".." && !strings.HasPrefix(relativePath, ".."+string(filepath.Separator)) && !filepath.IsAbs(relativePath)
 }
