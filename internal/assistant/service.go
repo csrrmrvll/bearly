@@ -3,6 +3,7 @@ package assistant
 import (
 	"context"
 	"regexp"
+	"slices"
 	"strconv"
 
 	"github.com/csrrmrvll/bearly/internal/httpx"
@@ -57,10 +58,7 @@ func (service *Service) BuildRequest(authenticatedUserID int64, userMessage stri
 }
 
 func RunSimulatedAssistant(ctx context.Context, request Request) (string, error) {
-	if len(request.Messages) == 0 {
-		return "Ask me about an order using its order number.", nil
-	}
-	userMessage := request.Messages[len(request.Messages)-1].Content
+	userMessage := latestUserMessage(request.Messages)
 	orderID, found := requestedOrderID(userMessage)
 	if !found {
 		return "Ask me about an order using its order number.", nil
@@ -104,6 +102,15 @@ func (service *Service) createTools() []Tool {
 			},
 		},
 	}
+}
+
+func latestUserMessage(messages []Message) string {
+	for _, message := range slices.Backward(messages) {
+		if message.Role == "user" {
+			return message.Content
+		}
+	}
+	return ""
 }
 
 func requestedOrderID(message string) (int64, bool) {
