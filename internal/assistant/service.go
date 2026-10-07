@@ -12,7 +12,6 @@ import (
 
 var (
 	orderNumberPattern = regexp.MustCompile(`(?i)order\s*#?(\d+)`)
-	userNumberPattern  = regexp.MustCompile(`(?i)user\s*#?(\d+)`)
 	refundPattern      = regexp.MustCompile(`(?i)refund`)
 )
 
@@ -28,7 +27,7 @@ type Message struct {
 type Tool struct {
 	Name        string
 	Description string
-	Execute     func(context.Context, int64) (string, error)
+	Execute     func(context.Context, map[string]any) (string, error)
 }
 
 type Request struct {
@@ -68,7 +67,7 @@ func RunSimulatedAssistant(ctx context.Context, request Request) (string, error)
 	}
 	for _, tool := range request.Tools {
 		if tool.Name == "get_order_status" && tool.Execute != nil {
-			return tool.Execute(ctx, orderID)
+			return tool.Execute(ctx, map[string]any{"orderId": orderID})
 		}
 	}
 	return "Order status is unavailable.", nil
@@ -79,8 +78,9 @@ func (service *Service) createTools(authenticatedUserID int64) []Tool {
 		{
 			Name:        "get_order_status",
 			Description: "Look up an order status using an order ID.",
-			Execute: func(ctx context.Context, orderID int64) (string, error) {
-				if orderID <= 0 || authenticatedUserID <= 0 {
+			Execute: func(ctx context.Context, input map[string]any) (string, error) {
+				orderID, valid := input["orderId"].(int64)
+				if !valid || orderID <= 0 {
 					return "Order not found.", nil
 				}
 				order, found, err := service.orderStore.FindByID(ctx, orderID)
