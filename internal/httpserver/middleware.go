@@ -9,6 +9,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -239,6 +240,45 @@ func clientIPKeyWithTrustedProxies(trustedProxyHops int) func(*http.Request) str
 			}
 		}
 		return clientIPKey(request)
+	}
+}
+
+func postCheckMiddleware(origin string, renderer *templates.Renderer) middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
+			if request.Method != http.MethodPost {
+				next.ServeHTTP(responseWriter, request)
+				return
+			}
+
+			originHeader := request.Header.Get("Origin")
+			if originHeader != "" {
+				if originHeader != origin {
+					if err := httpx.RespondWithErrorPage(responseWriter, renderer, http.StatusForbidden, "Invalid Origin", "Forbidden"); err != nil {
+						http.Error(responseWriter, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+					}
+				} else {
+					next.ServeHTTP(responseWriter, request)
+				}
+				return
+			}
+			refererHeader := request.Header.Get("Referer")
+			refererUrl, err := url.Parse(refererHeader)
+			if err != nil || refererUrl.Scheme == "" || refererUrl.Host == "" {
+				if err := httpx.RespondWithErrorPage(responseWriter, renderer, http.StatusForbidden, "Invalid Referer", "Forbidden"); err != nil {
+					http.Error(responseWriter, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+				}
+				return
+			}
+			urlOrigin := refererUrl.Scheme + "://" + refererUrl.Host
+			if urlOrigin != origin {
+				if err := httpx.RespondWithErrorPage(responseWriter, renderer, http.StatusForbidden, "Invalid Referer", "Forbidden"); err != nil {
+					http.Error(responseWriter, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+				}
+				return
+			}
+			next.ServeHTTP(responseWriter, request)
+		})
 	}
 }
 
