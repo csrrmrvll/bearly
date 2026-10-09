@@ -243,7 +243,7 @@ func clientIPKeyWithTrustedProxies(trustedProxyHops int) func(*http.Request) str
 	}
 }
 
-func postCheckMiddleware(origin string, renderer *templates.Renderer) middleware {
+func validateRequestOrigin(appOrigin string, renderer *templates.Renderer) middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
 			if request.Method != http.MethodPost {
@@ -251,33 +251,23 @@ func postCheckMiddleware(origin string, renderer *templates.Renderer) middleware
 				return
 			}
 
-			originHeader := request.Header.Get("Origin")
-			if originHeader != "" {
-				if originHeader != origin {
-					if err := httpx.RespondWithErrorPage(responseWriter, renderer, http.StatusForbidden, "Invalid Origin", "Forbidden"); err != nil {
-						http.Error(responseWriter, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-					}
-				} else {
+			origin := request.Header.Get("Origin")
+			if origin == appOrigin {
+				next.ServeHTTP(responseWriter, request)
+				return
+			}
+			if origin == "" {
+				referer := request.Header.Get("Referer")
+				parsedReferer, err := url.Parse(referer)
+				if err == nil && referer != "" && parsedReferer.Scheme+"://"+parsedReferer.Host == appOrigin {
 					next.ServeHTTP(responseWriter, request)
+					return
 				}
-				return
 			}
-			refererHeader := request.Header.Get("Referer")
-			refererUrl, err := url.Parse(refererHeader)
-			if err != nil || refererUrl.Scheme == "" || refererUrl.Host == "" {
-				if err := httpx.RespondWithErrorPage(responseWriter, renderer, http.StatusForbidden, "Invalid Referer", "Forbidden"); err != nil {
-					http.Error(responseWriter, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-				}
-				return
+
+			if err := httpx.RespondWithErrorPage(responseWriter, renderer, http.StatusForbidden, "Forbidden", "This request did not come from Bearly Secure."); err != nil {
+				http.Error(responseWriter, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			}
-			urlOrigin := refererUrl.Scheme + "://" + refererUrl.Host
-			if urlOrigin != origin {
-				if err := httpx.RespondWithErrorPage(responseWriter, renderer, http.StatusForbidden, "Invalid Referer", "Forbidden"); err != nil {
-					http.Error(responseWriter, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-				}
-				return
-			}
-			next.ServeHTTP(responseWriter, request)
 		})
 	}
 }
