@@ -272,10 +272,9 @@ func validateRequestOrigin(appOrigin string, renderer *templates.Renderer) middl
 	}
 }
 
-func addCSPHeaders(next http.Handler) http.Handler {
+func contentSecurityPolicy(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
-		cspHeadersValue := "Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
-		responseWriter.Header().Set("Content-Security-Policy", cspHeadersValue)
+		responseWriter.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'")
 		next.ServeHTTP(responseWriter, request)
 	})
 }
