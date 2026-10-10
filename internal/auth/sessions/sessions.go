@@ -38,11 +38,10 @@ func RequireWithReturnTo(responseWriter http.ResponseWriter, request *http.Reque
 	return accounts.CurrentSession{}, false, nil
 }
 
-func CSRFTokensMatch(expectedToken, actualToken string) bool {
-	if len(expectedToken) != len(actualToken) {
-		return false
-	}
-	return subtle.ConstantTimeCompare([]byte(expectedToken), []byte(actualToken)) == 1
+func CSRFTokensMatch(expected, actual string) bool {
+	expectedBytes := []byte(expected)
+	actualBytes := []byte(actual)
+	return len(expectedBytes) == len(actualBytes) && subtle.ConstantTimeCompare(expectedBytes, actualBytes) == 1
 }
 
 func HasRecentAuthentication(current accounts.CurrentSession, now time.Time) bool {
