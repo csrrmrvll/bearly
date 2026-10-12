@@ -47,9 +47,46 @@ func permissiveCORS(next http.Handler) http.Handler {
 	})
 }
 
+func validateRequestOrigin(appOrigin string, renderer *templates.Renderer) middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
+			if request.Method != http.MethodPost {
+				next.ServeHTTP(responseWriter, request)
+				return
+			}
+
+			origin := request.Header.Get("Origin")
+			if origin == appOrigin {
+				next.ServeHTTP(responseWriter, request)
+				return
+			}
+			if origin == "" {
+				referer := request.Header.Get("Referer")
+				parsedReferer, err := url.Parse(referer)
+				if err == nil && referer != "" && parsedReferer.Scheme+"://"+parsedReferer.Host == appOrigin {
+					next.ServeHTTP(responseWriter, request)
+					return
+				}
+			}
+
+			if err := httpx.RespondWithErrorPage(responseWriter, renderer, http.StatusForbidden, "Forbidden", "This request did not come from Bearly Secure."); err != nil {
+				http.Error(responseWriter, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			}
+		})
+	}
+}
+
 func contentTypeOptions(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
 		responseWriter.Header().Set("X-Content-Type-Options", "nosniff")
+		next.ServeHTTP(responseWriter, request)
+	})
+}
+
+func contentSecurityPolicy(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
+		nonce := httpx.CSPNonce(request.Context())
+		responseWriter.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'nonce-"+nonce+"'; style-src 'self'; img-src 'self' data:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'")
 		next.ServeHTTP(responseWriter, request)
 	})
 }
@@ -241,43 +278,6 @@ func clientIPKeyWithTrustedProxies(trustedProxyHops int) func(*http.Request) str
 		}
 		return clientIPKey(request)
 	}
-}
-
-func validateRequestOrigin(appOrigin string, renderer *templates.Renderer) middleware {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
-			if request.Method != http.MethodPost {
-				next.ServeHTTP(responseWriter, request)
-				return
-			}
-
-			origin := request.Header.Get("Origin")
-			if origin == appOrigin {
-				next.ServeHTTP(responseWriter, request)
-				return
-			}
-			if origin == "" {
-				referer := request.Header.Get("Referer")
-				parsedReferer, err := url.Parse(referer)
-				if err == nil && referer != "" && parsedReferer.Scheme+"://"+parsedReferer.Host == appOrigin {
-					next.ServeHTTP(responseWriter, request)
-					return
-				}
-			}
-
-			if err := httpx.RespondWithErrorPage(responseWriter, renderer, http.StatusForbidden, "Forbidden", "This request did not come from Bearly Secure."); err != nil {
-				http.Error(responseWriter, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			}
-		})
-	}
-}
-
-func contentSecurityPolicy(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
-		nonce := httpx.CSPNonce(request.Context())
-		responseWriter.Header().Set("Content-Security-Policy", fmt.Sprintf("default-src 'self'; script-src 'self' 'nonce-%s'; style-src 'self'; img-src 'self' data:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'", nonce))
-		next.ServeHTTP(responseWriter, request)
-	})
 }
 
 func boolToInt64(value bool) int64 {
