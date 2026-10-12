@@ -86,7 +86,8 @@ func contentTypeOptions(next http.Handler) http.Handler {
 func contentSecurityPolicy(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
 		nonce := httpx.CSPNonce(request.Context())
-		responseWriter.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'nonce-"+nonce+"'; style-src 'self'; img-src 'self' data:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'")
+		responseWriter.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'nonce-"+nonce+"'; style-src 'self'; img-src 'self' data:; frame-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self';")
+		responseWriter.Header().Set("X-Frame-Options", "SAMEORIGIN")
 		next.ServeHTTP(responseWriter, request)
 	})
 }
