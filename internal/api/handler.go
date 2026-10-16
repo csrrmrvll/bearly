@@ -95,14 +95,10 @@ func (handler *Handler) Products(responseWriter http.ResponseWriter, request *ht
 	httpx.RespondWithJSON(responseWriter, http.StatusOK, map[string]any{"products": products})
 }
 
-func (handler *Handler) ProductsOptions(responseWriter http.ResponseWriter, request *http.Request) {
-	if request.Method != http.MethodOptions && request.Method != http.MethodGet {
-		httpx.RespondWithError(responseWriter, http.StatusMethodNotAllowed, "Method not allowed")
-		return
-	}
+func (handler *Handler) ProductPreflight(responseWriter http.ResponseWriter, _ *http.Request) {
 	responseWriter.Header().Set("Access-Control-Allow-Origin", "*")
-	responseWriter.Header().Set("Access-Control-Allow-Methods", "GET")
-	httpx.RespondWithJSON(responseWriter, http.StatusNoContent, nil)
+	responseWriter.Header().Set("Access-Control-Allow-Methods", http.MethodGet)
+	responseWriter.WriteHeader(http.StatusNoContent)
 }
 
 func (handler *Handler) WarehouseOrders(responseWriter http.ResponseWriter, request *http.Request) {
