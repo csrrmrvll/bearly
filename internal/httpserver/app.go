@@ -45,11 +45,11 @@ type Options struct {
 	PawPalAPIKey            string
 	AcornFulfillmentDelay   time.Duration
 	EncryptionKeyring       *storage.Keyring
+	DownloadSigningKey      [32]byte
 	DataDirectory           string
 	FixtureDirectory        string
 	TemplateDirectory       string
 	PublicDirectory         string
-	DownloadSigningKey      [32]byte
 }
 
 type Application struct {
