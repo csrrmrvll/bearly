@@ -51,6 +51,11 @@ func LoadAttackerLab(workingDirectory string) (AttackerLabConfig, error) {
 }
 
 func Parse(environment map[string]string, workingDirectory string) (Config, error) {
+	pawPalAPIKey, err := requireEnvironmentVariable(environment, "PAWPAL_API_KEY")
+	if err != nil {
+		return Config{}, err
+	}
+
 	port, err := parseNonNegativeInteger(valueOrDefault(environment, "PORT", strconv.Itoa(defaultPort)), "PORT")
 	if err != nil {
 		return Config{}, err
@@ -76,11 +81,6 @@ func Parse(environment map[string]string, workingDirectory string) (Config, erro
 	databasePath := environment["DATABASE_URL"]
 	if databasePath == "" {
 		databasePath = filepath.Join(workingDirectory, "data", defaultDatabaseFilename)
-	}
-
-	pawPalAPIKey, err := requireEnvironmentVariable(environment, "PAWPAL_API_KEY")
-	if err != nil {
-		return Config{}, err
 	}
 
 	return Config{
@@ -117,6 +117,14 @@ func processEnvironment() map[string]string {
 		}
 	}
 	return environment
+}
+
+func requireEnvironmentVariable(environment map[string]string, name string) (string, error) {
+	value := environment[name]
+	if value == "" {
+		return "", fmt.Errorf("missing required environment variable: %s", name)
+	}
+	return value, nil
 }
 
 func valueOrDefault(environment map[string]string, name, fallback string) string {
@@ -224,12 +232,4 @@ func normalizeEncryptionVersion(version string) (string, error) {
 		}
 	}
 	return normalized, nil
-}
-
-func requireEnvironmentVariable(environment map[string]string, name string) (string, error) {
-	value := environment[name]
-	if value == "" {
-		return "", fmt.Errorf("missing required environment variable: %s", name)
-	}
-	return value, nil
 }
