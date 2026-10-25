@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+const allowedImageHost = "storage.googleapis.com"
+
 type Result struct {
 	RequestedURL string
 	FinalURL     string
@@ -41,18 +43,18 @@ type Service struct {
 }
 
 func NewService() *Service {
-	client := &http.Client{
-		Timeout: 5 * time.Second,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+	transport := &http.Transport{
+		Proxy:                 nil,
+		ResponseHeaderTimeout: 5 * time.Second,
+		TLSHandshakeTimeout:   5 * time.Second,
+	}
+	return &Service{client: &http.Client{
+		Timeout:   5 * time.Second,
+		Transport: transport,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
-		Transport: &http.Transport{
-			ResponseHeaderTimeout: 5 * time.Second,
-			TLSHandshakeTimeout:   5 * time.Second,
-			Proxy:                 nil,
-		},
-	}
-	return &Service{client: client}
+	}}
 }
 
 func (service *Service) Fetch(ctx context.Context, rawURL string, maxBytes int64) (Result, error) {
@@ -67,7 +69,7 @@ func (service *Service) Fetch(ctx context.Context, rawURL string, maxBytes int64
 	defer cancel()
 	request, err := http.NewRequestWithContext(requestContext, http.MethodGet, requestedURL.String(), nil)
 	if err != nil {
-		return Result{}, &Error{Message: "Use an absolute HTTP or HTTPS URL."}
+		return Result{}, &Error{Message: "Use an HTTPS URL from an allowed image host."}
 	}
 	response, err := service.client.Do(request)
 	if err != nil {
@@ -110,7 +112,7 @@ func (service *Service) Fetch(ctx context.Context, rawURL string, maxBytes int64
 
 func allowedURL(rawURL string) (*url.URL, bool) {
 	parsed, err := url.Parse(rawURL)
-	if err != nil || parsed.Scheme != "https" || parsed.User != nil || parsed.Host != "storage.googleapis.com" {
+	if err != nil || parsed.Scheme != "https" || parsed.User != nil || parsed.Host != allowedImageHost {
 		return nil, false
 	}
 	if parsed.Path == "" {
