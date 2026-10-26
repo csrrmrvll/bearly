@@ -14,6 +14,7 @@ import (
 
 	"github.com/csrrmrvll/bearly/internal/accounts"
 	"github.com/csrrmrvll/bearly/internal/auth/mfa"
+	"github.com/csrrmrvll/bearly/internal/auth/returnto"
 	"github.com/csrrmrvll/bearly/internal/auth/sessions"
 	"github.com/csrrmrvll/bearly/internal/httpx"
 	"github.com/csrrmrvll/bearly/internal/logging"
@@ -81,7 +82,7 @@ func NewHandler(appOrigin string, accountStore *accounts.Store, mfaStore *mfa.St
 }
 
 func (handler *Handler) LoginPage(responseWriter http.ResponseWriter, request *http.Request) {
-	returnTo := unsafeReturnTo(request.URL.Query().Get("returnTo"))
+	returnTo := returnto.Safe(request.URL.Query().Get("returnTo"))
 	if err := handler.renderLogin(responseWriter, http.StatusOK, "", returnTo); err != nil {
 		handler.internalError(responseWriter, request, err)
 	}
@@ -360,7 +361,7 @@ func (handler *Handler) passkeyResponse(responseWriter http.ResponseWriter, requ
 			if err != nil {
 				return uuid.Nil(), "/", nil, err
 			}
-			returnTo = unsafeReturnTo(returnToValue)
+			returnTo = returnto.Safe(returnToValue)
 		}
 		delete(responseFields, "returnTo")
 	}
@@ -371,13 +372,6 @@ func (handler *Handler) passkeyResponse(responseWriter http.ResponseWriter, requ
 	request.Body = io.NopCloser(bytes.NewReader(encodedResponse))
 	request.ContentLength = int64(len(encodedResponse))
 	return challengeID, returnTo, responseFields, nil
-}
-
-func unsafeReturnTo(value string) string {
-	if value == "" {
-		return "/"
-	}
-	return value
 }
 
 func responseCredentialID(responseFields map[string]json.RawMessage) (string, bool) {

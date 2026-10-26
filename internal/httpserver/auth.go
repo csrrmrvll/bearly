@@ -10,6 +10,7 @@ import (
 	"github.com/csrrmrvll/bearly/internal/auth/mfa"
 	"github.com/csrrmrvll/bearly/internal/auth/passwordreset"
 	"github.com/csrrmrvll/bearly/internal/auth/passwords"
+	"github.com/csrrmrvll/bearly/internal/auth/returnto"
 	"github.com/csrrmrvll/bearly/internal/auth/sessions"
 	"github.com/csrrmrvll/bearly/internal/httpx"
 	"github.com/csrrmrvll/bearly/internal/logging"
@@ -293,10 +294,7 @@ func (handler *authHandler) logAuthenticationEvent(_ *http.Request, eventName st
 }
 
 func safeReturnTo(value string) string {
-	if value == "" {
-		return "/"
-	}
-	return value
+	return returnto.Safe(value)
 }
 
 func nullableUserID(user accounts.User, found bool) any {
