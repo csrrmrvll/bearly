@@ -39,6 +39,7 @@ const (
 
 type Options struct {
 	AppOrigin               string
+	TrustedProxyHops        int
 	MaxPublicProductResults int
 	MaxRequestBodyBytes     int64
 	MaxUploadBytes          int64
