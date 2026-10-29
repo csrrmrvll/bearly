@@ -16,6 +16,7 @@ import (
 	"github.com/csrrmrvll/bearly/internal/database"
 	"github.com/csrrmrvll/bearly/internal/httpserver"
 	"github.com/csrrmrvll/bearly/internal/logging"
+	"github.com/csrrmrvll/bearly/internal/storage"
 )
 
 func main() {
@@ -36,6 +37,11 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("load configuration: %w", err)
 	}
 
+	keyring, err := storage.NewKeyring(appConfig.ActiveEncryptionKeyVersion, appConfig.EncryptionKeys)
+	if err != nil {
+		return fmt.Errorf("create keyring: %w", err)
+	}
+
 	databaseConnection, err := database.Open(ctx, appConfig.DatabasePath)
 	if err != nil {
 		return err
@@ -49,6 +55,7 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	defer appLogger.Close()
 	application, err := httpserver.New(databaseConnection, appLogger, httpserver.Options{
 		AppOrigin:               appConfig.AppOrigin,
@@ -59,6 +66,7 @@ func run(ctx context.Context) error {
 		PawPalAPIKey:            appConfig.PawPalAPIKey,
 		AcornFulfillmentDelay:   appConfig.AcornFulfillmentDelay,
 		DownloadSigningKey:      appConfig.DownloadSigningKey,
+		EncryptionKeyring:       keyring,
 		DataDirectory:           filepath.Join(workingDirectory, "data"),
 		FixtureDirectory:        filepath.Join(workingDirectory, "data", "fixtures"),
 		TemplateDirectory:       filepath.Join(workingDirectory, "web", "templates"),
