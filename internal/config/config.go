@@ -205,21 +205,6 @@ func parseKey(value, name string) ([32]byte, error) {
 	return [32]byte(decoded), nil
 }
 
-func parseOptionalEncryptionKeys(environment map[string]string) (string, map[string][32]byte, error) {
-	_, hasActiveVersion := environment[activeEncryptionVersionEnv]
-	hasEncryptionKey := false
-	for name := range environment {
-		if strings.HasPrefix(name, encryptionKeyEnvPrefix) {
-			hasEncryptionKey = true
-			break
-		}
-	}
-	if !hasActiveVersion && !hasEncryptionKey {
-		return "", nil, nil
-	}
-	return parseEncryptionKeys(environment)
-}
-
 func parseEncryptionKeys(environment map[string]string) (string, map[string][32]byte, error) {
 	configuredVersion := environment[activeEncryptionVersionEnv]
 	if configuredVersion == "" {

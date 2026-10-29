@@ -37,11 +37,6 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("load configuration: %w", err)
 	}
 
-	keyring, err := storage.NewKeyring(appConfig.ActiveEncryptionKeyVersion, appConfig.EncryptionKeys)
-	if err != nil {
-		return fmt.Errorf("create keyring: %w", err)
-	}
-
 	databaseConnection, err := database.Open(ctx, appConfig.DatabasePath)
 	if err != nil {
 		return err
@@ -55,8 +50,12 @@ func run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
 	defer appLogger.Close()
+	encryptionKeyring, err := storage.NewKeyring(appConfig.ActiveEncryptionKeyVersion, appConfig.EncryptionKeys)
+	if err != nil {
+		return fmt.Errorf("create encryption keyring: %w", err)
+	}
+
 	application, err := httpserver.New(databaseConnection, appLogger, httpserver.Options{
 		AppOrigin:               appConfig.AppOrigin,
 		TrustedProxyHops:        appConfig.TrustedProxyHops,
@@ -66,7 +65,7 @@ func run(ctx context.Context) error {
 		PawPalAPIKey:            appConfig.PawPalAPIKey,
 		AcornFulfillmentDelay:   appConfig.AcornFulfillmentDelay,
 		DownloadSigningKey:      appConfig.DownloadSigningKey,
-		EncryptionKeyring:       keyring,
+		EncryptionKeyring:       encryptionKeyring,
 		DataDirectory:           filepath.Join(workingDirectory, "data"),
 		FixtureDirectory:        filepath.Join(workingDirectory, "data", "fixtures"),
 		TemplateDirectory:       filepath.Join(workingDirectory, "web", "templates"),
