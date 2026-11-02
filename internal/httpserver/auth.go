@@ -94,13 +94,14 @@ func (handler *authHandler) Login(responseWriter http.ResponseWriter, request *h
 		}
 		return
 	}
+
 	if passwords.NeedsRehash(user.PasswordHash) {
-		newHash, err := passwords.Hash(password)
+		passwordHash, err := passwords.Hash(password)
 		if err != nil {
 			handler.internalError(responseWriter, request, err)
 			return
 		}
-		if err := handler.accounts.UpdatePasswordHash(request.Context(), user.ID, newHash); err != nil {
+		if err := handler.accounts.UpdatePasswordHash(request.Context(), user.ID, passwordHash); err != nil {
 			handler.internalError(responseWriter, request, err)
 			return
 		}

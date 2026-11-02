@@ -225,18 +225,6 @@ func (handler *authHandler) RecoverMFA(responseWriter http.ResponseWriter, reque
 		}
 		return
 	}
-	if passwords.NeedsRehash(user.PasswordHash) {
-		newHash, err := passwords.Hash(password)
-		if err != nil {
-			handler.internalError(responseWriter, request, err)
-			return
-		}
-		if err := handler.accounts.UpdatePasswordHash(request.Context(), user.ID, newHash); err != nil {
-			handler.internalError(responseWriter, request, err)
-			return
-		}
-	}
-
 	consumed, err := handler.mfa.ConsumeBackupCode(request.Context(), user.ID, backupCode)
 	if err != nil {
 		handler.internalError(responseWriter, request, err)
@@ -252,6 +240,17 @@ func (handler *authHandler) RecoverMFA(responseWriter http.ResponseWriter, reque
 			handler.internalError(responseWriter, request, err)
 		}
 		return
+	}
+	if passwords.NeedsRehash(user.PasswordHash) {
+		passwordHash, err := passwords.Hash(password)
+		if err != nil {
+			handler.internalError(responseWriter, request, err)
+			return
+		}
+		if err := handler.accounts.UpdatePasswordHash(request.Context(), user.ID, passwordHash); err != nil {
+			handler.internalError(responseWriter, request, err)
+			return
+		}
 	}
 	challengeToken := totpLoginChallengeToken(request)
 	if err := handler.mfa.DeleteChallenge(request.Context(), challengeToken); err != nil {

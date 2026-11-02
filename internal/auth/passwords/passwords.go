@@ -12,10 +12,11 @@ import (
 
 const (
 	MaxLength   = 128
-	saltLength  = 16
 	memoryKiB   = 19 * 1024
 	iterations  = 2
 	parallelism = 1
+	saltLength  = 16
+	keyLength   = 32
 )
 
 func Hash(password string) (string, error) {
@@ -27,7 +28,7 @@ func Hash(password string) (string, error) {
 	if _, err := rand.Read(salt); err != nil {
 		return "", fmt.Errorf("generate password salt: %w", err)
 	}
-	derivedKey := argon2.IDKey([]byte(password), salt, iterations, memoryKiB, parallelism, 32)
+	derivedKey := argon2.IDKey([]byte(password), salt, iterations, memoryKiB, parallelism, keyLength)
 
 	return encodeArgon2idHash(argon2idHash{
 		version:     argon2.Version,
@@ -68,13 +69,12 @@ func NeedsRehash(encodedHash string) bool {
 		return true
 	}
 	parsedHash, ok := parseArgon2idHash(encodedHash)
-	if !ok || parsedHash.version != argon2.Version || parsedHash.memoryKiB != memoryKiB ||
-		parsedHash.iterations != iterations || parsedHash.parallelism != parallelism {
-		return true
+	if !ok {
+		return false
 	}
-	derivedKeyLength := uint32(len(parsedHash.derivedKey))
-	if derivedKeyLength != 32 {
-		return true
-	}
-	return false
+	return parsedHash.memoryKiB != memoryKiB ||
+		parsedHash.iterations != iterations ||
+		parsedHash.parallelism != parallelism ||
+		parsedHash.version != argon2.Version ||
+		len(parsedHash.derivedKey) != keyLength
 }
