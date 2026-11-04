@@ -3,7 +3,10 @@ package pawpal
 import (
 	"crypto/subtle"
 	"fmt"
+	"math"
 )
+
+const maxSafeInteger = 9_007_199_254_740_991
 
 type WebhookOutcome string
 
@@ -23,24 +26,26 @@ func CreateCheckoutURL(orderID int64) string {
 }
 
 func VerifyWebhook(providedKey, expectedKey string, payload any) WebhookVerification {
-	if subtle.ConstantTimeCompare([]byte(providedKey), []byte(expectedKey)) != 1 {
-		return WebhookVerification{Outcome: WebhookUnauthorized, OrderID: 0}
+	if !webhookKeysMatch(providedKey, expectedKey) {
+		return WebhookVerification{Outcome: WebhookUnauthorized}
 	}
-	payloadRecord, _ := payload.(map[string]any)
-	orderID, _ := payloadRecord["orderId"]
-	if orderID == nil {
-		return WebhookVerification{Outcome: WebhookMalformed, OrderID: 0}
+	return verifyPayload(payload)
+}
+
+func webhookKeysMatch(providedKey, expectedKey string) bool {
+	providedBytes := []byte(providedKey)
+	expectedBytes := []byte(expectedKey)
+	return len(providedBytes) == len(expectedBytes) && subtle.ConstantTimeCompare(providedBytes, expectedBytes) == 1
+}
+
+func verifyPayload(payload any) WebhookVerification {
+	payloadRecord, ok := payload.(map[string]any)
+	if !ok {
+		return WebhookVerification{Outcome: WebhookMalformed}
 	}
-	switch orderID := orderID.(type) {
-	case float64:
-		if orderID <= 0 || orderID != float64(int64(orderID)) {
-			return WebhookVerification{Outcome: WebhookMalformed, OrderID: 0}
-		}
-	default:
-		return WebhookVerification{Outcome: WebhookMalformed, OrderID: 0}
+	orderID, ok := payloadRecord["orderId"].(float64)
+	if !ok || orderID != math.Trunc(orderID) || orderID <= 0 || orderID > maxSafeInteger || payloadRecord["status"] != "approved" {
+		return WebhookVerification{Outcome: WebhookMalformed}
 	}
-	if payloadRecord["status"] != "approved" {
-		return WebhookVerification{Outcome: WebhookMalformed, OrderID: 0}
-	}
-	return WebhookVerification{Outcome: WebhookApproved, OrderID: int64(orderID.(float64))}
+	return WebhookVerification{Outcome: WebhookApproved, OrderID: int64(orderID)}
 }
