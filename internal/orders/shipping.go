@@ -33,17 +33,16 @@ func EncryptShippingDetails(details ShippingDetails, keyring *storage.Keyring) (
 	if err != nil {
 		return "", fmt.Errorf("encrypt shipping details: %w", err)
 	}
-	return string(encrypted), nil
+	return encrypted, nil
 }
 
 func DecryptShippingDetails(serialized string, keyring *storage.Keyring) (ShippingDetails, error) {
-	decrypted, err := keyring.Decrypt(serialized)
+	plaintext, err := keyring.Decrypt(serialized)
 	if err != nil {
 		return ShippingDetails{}, fmt.Errorf("decrypt shipping details: %w", err)
 	}
-	serialized = string(decrypted)
 	var details serializedShippingDetails
-	if err := json.Unmarshal([]byte(serialized), &details); err != nil || details.Name == nil || details.Address == nil || details.City == nil || details.Region == nil || details.PostalCode == nil {
+	if err := json.Unmarshal(plaintext, &details); err != nil || details.Name == nil || details.Address == nil || details.City == nil || details.Region == nil || details.PostalCode == nil {
 		return ShippingDetails{}, errors.New("invalid shipping details")
 	}
 	return ShippingDetails{
