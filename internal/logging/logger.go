@@ -18,6 +18,7 @@ var sensitiveFields = map[string]struct{}{
 	"shippingCity":       {},
 	"shippingRegion":     {},
 	"shippingPostalCode": {},
+	"originalName":       {},
 	"postalCode":         {},
 	"sessionId":          {},
 	"resetToken":         {},
