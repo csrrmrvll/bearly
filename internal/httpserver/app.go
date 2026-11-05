@@ -219,12 +219,6 @@ func New(database *sql.DB, logger *logging.Logger, options Options) (*Applicatio
 			window:  time.Minute,
 			maximum: 100,
 			key:     clientIPKeyWithTrustedProxies(options.TrustedProxyHops),
-			onLimit: func(responseWriter http.ResponseWriter, request *http.Request, state rateLimitState) {
-				responseWriter.Header().Set("Retry-After", fmt.Sprint(state.retryAfterSeconds))
-				if err := httpx.RespondWithErrorPage(responseWriter, renderer, http.StatusTooManyRequests, "Rate Limit Exceeded", "You have exceeded the rate limit for this endpoint. Please try again later."); err != nil {
-					http.Error(responseWriter, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-				}
-			},
 		}),
 		validateRequestOrigin(options.AppOrigin, renderer),
 	)
