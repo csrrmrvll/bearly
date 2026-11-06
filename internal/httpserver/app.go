@@ -143,7 +143,18 @@ func New(database *sql.DB, logger *logging.Logger, options Options) (*Applicatio
 	dynamicMux.HandleFunc("GET /products/{id}", storefrontHandler.Product)
 	dynamicMux.HandleFunc("GET /api/account/orders", apiHandler.AccountOrders)
 	dynamicMux.HandleFunc("GET /api/orders/{id}", apiHandler.Order)
-	dynamicMux.HandleFunc("GET /api/products", apiHandler.Products)
+	dynamicMux.Handle("GET /api/products", fixedWindowRateLimiter(rateLimitOptions{
+		window:  time.Minute,
+		maximum: 30,
+		key:     clientIPKeyWithTrustedProxies(options.TrustedProxyHops),
+		onLimit: func(responseWriter http.ResponseWriter, request *http.Request, state rateLimitState) {
+			responseWriter.Header().Set("Retry-After", fmt.Sprint(state.retryAfterSeconds))
+			responseWriter.Header().Set("Access-Control-Allow-Origin", "*")
+			httpx.RespondWithJSON(responseWriter, http.StatusTooManyRequests, map[string]any{
+				"error": "rate limit exceeded",
+			})
+		},
+	})(http.HandlerFunc(apiHandler.Products)))
 	dynamicMux.HandleFunc("OPTIONS /api/products", apiHandler.ProductPreflight)
 	dynamicMux.HandleFunc("GET /api/integrations/warehouse/orders", apiHandler.WarehouseOrders)
 	dynamicMux.Handle("POST /products/{id}/reviews", parseForm(options.MaxRequestBodyBytes, renderer)(http.HandlerFunc(reviewHandler.Create)))
