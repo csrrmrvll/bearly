@@ -32,11 +32,6 @@ import (
 	"github.com/csrrmrvll/bearly/internal/uploads"
 )
 
-const (
-	defaultUploadBytes            = 5 * 1024 * 1024
-	unboundedPublicProductResults = -1
-)
-
 type Options struct {
 	AppOrigin               string
 	TrustedProxyHops        int
