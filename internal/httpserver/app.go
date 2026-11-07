@@ -181,9 +181,11 @@ func New(database *sql.DB, logger *logging.Logger, options Options) (*Applicatio
 		},
 	})
 
+	searchLimiter := SearchThrottle(renderer)
+
 	dynamicMux := http.NewServeMux()
 	dynamicMux.HandleFunc("GET /{$}", storefrontHandler.Storefront)
-	dynamicMux.HandleFunc("GET /search", storefrontHandler.Search)
+	dynamicMux.Handle("GET /search", parseForm(options.MaxRequestBodyBytes, renderer)(searchLimiter(http.HandlerFunc(storefrontHandler.Search))))
 	dynamicMux.HandleFunc("GET /products/{id}", storefrontHandler.Product)
 	dynamicMux.HandleFunc("GET /api/account/orders", apiHandler.AccountOrders)
 	dynamicMux.HandleFunc("GET /api/orders/{id}", apiHandler.Order)
