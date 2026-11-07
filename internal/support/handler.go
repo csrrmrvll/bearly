@@ -233,6 +233,9 @@ func (handler *Handler) readArchive(responseWriter http.ResponseWriter, request 
 	if len(files) == 0 {
 		return nil, errors.New("missing archive upload")
 	}
+	if len(files) > 1 {
+		return nil, errors.New("multiple archive uploads")
+	}
 	file, err := files[0].Open()
 	if err != nil {
 		return nil, fmt.Errorf("open archive upload: %w", err)

@@ -226,6 +226,7 @@ func (handler *authHandler) Signup(responseWriter http.ResponseWriter, request *
 func parseForm(_ int64, renderer *templates.Renderer) middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
+			request.Body = http.MaxBytesReader(responseWriter, request.Body, 32*1024)
 			if err := request.ParseForm(); err != nil {
 				statusCode := http.StatusBadRequest
 				heading := "Invalid Request"
