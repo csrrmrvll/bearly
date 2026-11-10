@@ -111,12 +111,12 @@ func (handler *Handler) Submit(responseWriter http.ResponseWriter, request *http
 		Region:     shippingDetails.Region,
 		PostalCode: shippingDetails.PostalCode,
 	}, handler.fulfillmentDelay)
+	if errors.Is(err, context.DeadlineExceeded) {
+		responseWriter.Header().Set("Retry-After", "1")
+		handler.renderCheckoutError(responseWriter, request, http.StatusServiceUnavailable, current, items, "Shipping is temporarily unavailable. Try again shortly.")
+		return
+	}
 	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			responseWriter.Header().Set("Retry-After", "1")
-			handler.renderCheckoutError(responseWriter, request, http.StatusServiceUnavailable, current, items, "Shipping is temporarily unavailable. Try again shortly.")
-			return
-		}
 		handler.internalError(responseWriter, request, err)
 		return
 	}
