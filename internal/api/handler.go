@@ -138,6 +138,7 @@ func (handler *Handler) WarehouseOrders(responseWriter http.ResponseWriter, requ
 		handler.internalError(responseWriter, request, err)
 		return
 	}
+	SetQuotaHeaders(responseWriter, quota)
 	if !quota.Allowed {
 		RespondWithQuotaExhausted(responseWriter, quota)
 		return
@@ -151,7 +152,6 @@ func (handler *Handler) WarehouseOrders(responseWriter http.ResponseWriter, requ
 	for _, order := range orders {
 		responses = append(responses, toOrderResponse(order))
 	}
-	SetQuotaHeaders(responseWriter, quota)
 	httpx.RespondWithJSON(responseWriter, http.StatusOK, map[string]any{
 		"integration": "Warehouse Fulfillment Integration",
 		"orders":      responses,
