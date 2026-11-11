@@ -12,6 +12,7 @@ import (
 	"github.com/csrrmrvll/bearly/internal/auth/passwords"
 	"github.com/csrrmrvll/bearly/internal/auth/returnto"
 	"github.com/csrrmrvll/bearly/internal/auth/sessions"
+	"github.com/csrrmrvll/bearly/internal/botdetection"
 	"github.com/csrrmrvll/bearly/internal/httpx"
 	"github.com/csrrmrvll/bearly/internal/logging"
 	"github.com/csrrmrvll/bearly/internal/templates"
@@ -195,6 +196,10 @@ func (handler *authHandler) Signup(responseWriter http.ResponseWriter, request *
 	passwordHash, err := passwords.Hash(password)
 	if err != nil {
 		handler.internalError(responseWriter, request, err)
+		return
+	}
+	challengedOrBlocked := botdetection.ProtectSignup(responseWriter, request, handler.renderer)
+	if challengedOrBlocked {
 		return
 	}
 	user, err := handler.accounts.CreateCustomer(request.Context(), email, displayName, passwordHash)
