@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"uuid"
 
 	"github.com/csrrmrvll/bearly/internal/httpx"
 	"github.com/csrrmrvll/bearly/internal/logging"
@@ -294,6 +296,19 @@ func clientIPKeyWithTrustedProxies(trustedProxyHops int) func(*http.Request) str
 		}
 		return clientIPKey(request)
 	}
+}
+
+type contextKey string
+
+const requestIDContextKey contextKey = "requestID"
+
+func requestLogger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
+		requestID := uuid.NewV4()
+		responseWriter.Header().Set("X-Request-ID", requestID.String())
+		request = request.WithContext(context.WithValue(request.Context(), requestIDContextKey, requestID))
+		next.ServeHTTP(responseWriter, request)
+	})
 }
 
 func boolToInt64(value bool) int64 {

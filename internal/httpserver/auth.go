@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"unicode/utf8"
+	"uuid"
 
 	"github.com/csrrmrvll/bearly/internal/accounts"
 	"github.com/csrrmrvll/bearly/internal/auth/mfa"
@@ -29,22 +30,25 @@ type authPage struct {
 }
 
 type authHandler struct {
-	accounts       *accounts.Store
-	renderer       *templates.Renderer
-	logger         *logging.Logger
-	mfa            *mfa.Store
-	passwordResets *passwordreset.Store
-	appOrigin      string
+	accounts         *accounts.Store
+	renderer         *templates.Renderer
+	logger           *logging.Logger
+	mfa              *mfa.Store
+	passwordResets   *passwordreset.Store
+	appOrigin        string
+	trustedProxyHops int
 }
 
-func newAuthHandler(accountStore *accounts.Store, mfaStore *mfa.Store, passwordResetStore *passwordreset.Store, renderer *templates.Renderer, logger *logging.Logger, appOrigin string) *authHandler {
+func newAuthHandler(accountStore *accounts.Store, mfaStore *mfa.Store, passwordResetStore *passwordreset.Store, renderer *templates.Renderer,
+	logger *logging.Logger, appOrigin string, trustedProxyHops int) *authHandler {
 	return &authHandler{
-		accounts:       accountStore,
-		renderer:       renderer,
-		logger:         logger,
-		mfa:            mfaStore,
-		passwordResets: passwordResetStore,
-		appOrigin:      appOrigin,
+		accounts:         accountStore,
+		renderer:         renderer,
+		logger:           logger,
+		mfa:              mfaStore,
+		passwordResets:   passwordResetStore,
+		appOrigin:        appOrigin,
+		trustedProxyHops: trustedProxyHops,
 	}
 }
 
@@ -306,7 +310,33 @@ func (handler *authHandler) internalError(responseWriter http.ResponseWriter, re
 	}
 }
 
-func (handler *authHandler) logAuthenticationEvent(_ *http.Request, eventName string, fields map[string]any) {
+func (handler *authHandler) logAuthenticationEvent(request *http.Request, eventName string, fields map[string]any) {
+	if fields == nil {
+		fields = make(map[string]any)
+	}
+	requestId := request.Context().Value(requestIDContextKey)
+	switch requestID := requestId.(type) {
+	case uuid.UUID:
+		fields["requestId"] = requestID.String()
+	case string:
+		fields["requestId"] = requestID
+	default:
+		fields["requestId"] = nil
+	}
+	sourceIp := clientIPKeyWithTrustedProxies(handler.trustedProxyHops)(request)
+	if sourceIp != "" {
+		fields["sourceIp"] = sourceIp
+	}
+	userId := fields["userId"]
+	if userId == nil {
+		fields["userId"] = nil
+	}
+	success, _ := fields["success"].(bool)
+	if success == true {
+		fields["outcome"] = "success"
+	} else {
+		fields["outcome"] = "failure"
+	}
 	_ = handler.logger.Event(eventName, fields)
 }
 
