@@ -260,6 +260,7 @@ func New(database *sql.DB, logger *logging.Logger, options Options) (*Applicatio
 			key:     clientIPKeyWithTrustedProxies(options.TrustedProxyHops),
 		}),
 		validateRequestOrigin(options.AppOrigin, renderer),
+		LoadShedder(50, 1),
 	)
 
 	mainMux := http.NewServeMux()
