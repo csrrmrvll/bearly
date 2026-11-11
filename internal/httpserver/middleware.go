@@ -23,11 +23,31 @@ import (
 
 type middleware func(http.Handler) http.Handler
 
+type contextKey string
+
+const (
+	requestIDContextKey contextKey = "request-id"
+)
+
 func applyMiddleware(handler http.Handler, middlewareChain ...middleware) http.Handler {
 	for _, currentMiddleware := range slices.Backward(middlewareChain) {
 		handler = currentMiddleware(handler)
 	}
 	return handler
+}
+
+func assignRequestID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
+		requestID := uuid.NewV4()
+		responseWriter.Header().Set("X-Request-ID", requestID.String())
+		request = request.WithContext(context.WithValue(request.Context(), requestIDContextKey, requestID))
+		next.ServeHTTP(responseWriter, request)
+	})
+}
+
+func requestID(ctx context.Context) uuid.UUID {
+	identifier, _ := ctx.Value(requestIDContextKey).(uuid.UUID)
+	return identifier
 }
 
 func validateRequestOrigin(appOrigin string, renderer *templates.Renderer) middleware {
@@ -296,19 +316,6 @@ func clientIPKeyWithTrustedProxies(trustedProxyHops int) func(*http.Request) str
 		}
 		return clientIPKey(request)
 	}
-}
-
-type contextKey string
-
-const requestIDContextKey contextKey = "requestID"
-
-func requestLogger(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(responseWriter http.ResponseWriter, request *http.Request) {
-		requestID := uuid.NewV4()
-		responseWriter.Header().Set("X-Request-ID", requestID.String())
-		request = request.WithContext(context.WithValue(request.Context(), requestIDContextKey, requestID))
-		next.ServeHTTP(responseWriter, request)
-	})
 }
 
 func boolToInt64(value bool) int64 {

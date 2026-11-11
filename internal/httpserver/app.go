@@ -282,9 +282,9 @@ func New(database *sql.DB, logger *logging.Logger, options Options) (*Applicatio
 	handler := applyMiddleware(
 		mainMux,
 		cspNonce,
+		assignRequestID,
 		securityHeaders,
 		recoverPanics(logger, renderer),
-		requestLogger,
 	)
 	return &Application{Handler: handler, publicRoot: publicRoot}, nil
 }
