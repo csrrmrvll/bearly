@@ -170,6 +170,9 @@ func (handler *authHandler) Signup(responseWriter http.ResponseWriter, request *
 		return
 	}
 
+	if blocked := botdetection.ProtectSignup(responseWriter, request, handler.renderer); blocked {
+		return
+	}
 	email, emailErr := httpx.FormValue(request, "email")
 	displayName, displayNameErr := httpx.FormValue(request, "displayName")
 	password, passwordErr := httpx.FormValue(request, "password")
@@ -196,10 +199,6 @@ func (handler *authHandler) Signup(responseWriter http.ResponseWriter, request *
 	passwordHash, err := passwords.Hash(password)
 	if err != nil {
 		handler.internalError(responseWriter, request, err)
-		return
-	}
-	challengedOrBlocked := botdetection.ProtectSignup(responseWriter, request, handler.renderer)
-	if challengedOrBlocked {
 		return
 	}
 	user, err := handler.accounts.CreateCustomer(request.Context(), email, displayName, passwordHash)

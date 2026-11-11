@@ -10,9 +10,22 @@
 </div>
 <form method="post" action="/login" class="auth-form">
   <input name="returnTo" type="hidden" value="{{.ReturnTo}}" />
-  <label>Email<input name="email" type="email" autocomplete="username" required autofocus /></label>
-  <label>Password<input name="password" type="password" autocomplete="current-password" maxlength="128"
-      required /></label>
+  <label
+    >Email<input
+      name="email"
+      type="email"
+      autocomplete="username"
+      required
+      autofocus
+  /></label>
+  <label
+    >Password<input
+      name="password"
+      type="password"
+      autocomplete="current-password"
+      maxlength="128"
+      required
+  /></label>
   <button type="submit">Log in</button>
 </form>
 <p class="auth-link">New here? <a href="/signup">Create an account</a>.</p>
@@ -21,7 +34,9 @@
   <a href="/recover-mfa">Lost access to your authenticator app?</a>
 </p>
 <p class="auth-link">
-  <a href="/auth/passkey?returnTo={{urlquery .ReturnTo}}">Sign in with passkey instead</a>.
+  <a href="/auth/passkey?returnTo={{urlquery .ReturnTo}}"
+    >Sign in with passkey instead</a
+  >.
 </p>
 {{template "document-end" .}}{{end}} {{define "signup"}}{{template
 "document-start" .}}
@@ -35,14 +50,33 @@
   {{end -}}
 </div>
 <form method="post" action="/signup" class="auth-form">
-  <label hidden>
-    Leave this field blank
-    <input name="companyWebsite" type="text" tabindex="-1" autocomplete="off" />
-  </label>
-  <label>Name<input name="displayName" type="text" autocomplete="name" required autofocus /></label>
-  <label>Email<input name="email" type="email" autocomplete="email" required /></label>
-  <label>Password<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128"
-      required /></label>
+  <label hidden
+    >Leave this field blank<input
+      name="companyWebsite"
+      type="text"
+      tabindex="-1"
+      autocomplete="off"
+  /></label>
+  <label
+    >Name<input
+      name="displayName"
+      type="text"
+      autocomplete="name"
+      required
+      autofocus
+  /></label>
+  <label
+    >Email<input name="email" type="email" autocomplete="email" required
+  /></label>
+  <label
+    >Password<input
+      name="password"
+      type="password"
+      autocomplete="new-password"
+      minlength="8"
+      maxlength="128"
+      required
+  /></label>
   <button type="submit">Create account</button>
 </form>
 <p class="auth-link">Already have an account? <a href="/login">Log in</a>.</p>
@@ -67,8 +101,15 @@
 </div>
 <form method="post" action="/login/totp" class="auth-form">
   <input name="returnTo" type="hidden" value="{{.ReturnTo}}" />
-  <label>Authenticator code<input name="mfaCode" type="text" inputmode="numeric" autocomplete="one-time-code" required
-      autofocus /></label>
+  <label
+    >Authenticator code<input
+      name="mfaCode"
+      type="text"
+      inputmode="numeric"
+      autocomplete="one-time-code"
+      required
+      autofocus
+  /></label>
   <button type="submit">Verify code</button>
 </form>
 <form method="post" action="/login/totp/cancel" class="auth-link">
@@ -91,10 +132,29 @@
   {{end -}}
 </div>
 <form method="post" action="/recover-mfa" class="auth-form">
-  <label>Email<input name="email" type="email" autocomplete="username" required autofocus /></label>
-  <label>Password<input name="password" type="password" autocomplete="current-password" maxlength="128"
-      required /></label>
-  <label>Backup code<input name="backupCode" type="text" autocomplete="one-time-code" required /></label>
+  <label
+    >Email<input
+      name="email"
+      type="email"
+      autocomplete="username"
+      required
+      autofocus
+  /></label>
+  <label
+    >Password<input
+      name="password"
+      type="password"
+      autocomplete="current-password"
+      maxlength="128"
+      required
+  /></label>
+  <label
+    >Backup code<input
+      name="backupCode"
+      type="text"
+      autocomplete="one-time-code"
+      required
+  /></label>
   <button type="submit">Recover account</button>
 </form>
 <p class="auth-link"><a href="/login">Back to login</a></p>
@@ -122,7 +182,14 @@
   {{end}}{{end -}}
 </div>
 <form method="post" action="/password-reset" class="auth-form">
-  <label>Email<input name="email" type="email" autocomplete="email" required autofocus /></label>
+  <label
+    >Email<input
+      name="email"
+      type="email"
+      autocomplete="email"
+      required
+      autofocus
+  /></label>
   <button type="submit">Send reset link</button>
 </form>
 <p class="auth-link"><a href="/login">Back to login</a></p>
@@ -137,9 +204,21 @@
   <p class="error">{{.Error}}</p>
   {{end -}}
 </div>
-<form method="post" action="/password-reset/{{urlquery .Token}}" class="auth-form">
-  <label>New password<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128"
-      required autofocus /></label>
+<form
+  method="post"
+  action="/password-reset/{{urlquery .Token}}"
+  class="auth-form"
+>
+  <label
+    >New password<input
+      name="password"
+      type="password"
+      autocomplete="new-password"
+      minlength="8"
+      maxlength="128"
+      required
+      autofocus
+  /></label>
   <button type="submit">Reset password</button>
 </form>
 <p class="auth-link"><a href="/login">Back to login</a></p>
