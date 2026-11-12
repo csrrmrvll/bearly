@@ -127,6 +127,7 @@ func (handler *authHandler) TOTPLogin(responseWriter http.ResponseWriter, reques
 		return
 	}
 	if !verified {
+		handler.loginTracker.Record(requestID(request.Context()), clientIPKeyWithTrustedProxies(handler.trustedProxyHops)(request), user.ID)
 		exhausted, err := handler.mfa.RecordChallengeFailure(request.Context(), challengeToken)
 		if err != nil {
 			handler.internalError(responseWriter, request, err)
@@ -297,6 +298,7 @@ func (handler *authHandler) RequestPasswordReset(responseWriter http.ResponseWri
 		return
 	}
 	if !found {
+		handler.passwordResetTracker.Record(requestID(request.Context()), clientIPKeyWithTrustedProxies(handler.trustedProxyHops)(request), nil)
 		handler.logAuthenticationEvent(request, "password_reset_request", map[string]any{
 			"email":         email,
 			"success":       false,
@@ -317,6 +319,7 @@ func (handler *authHandler) RequestPasswordReset(responseWriter http.ResponseWri
 	if err == nil && appURL.Hostname() == "localhost" {
 		fmt.Printf("Bear Mail to %s:\nReset your password: %s\n", email, resetLink)
 	}
+	handler.passwordResetTracker.Record(requestID(request.Context()), clientIPKeyWithTrustedProxies(handler.trustedProxyHops)(request), user.ID)
 	handler.logAuthenticationEvent(request, "password_reset_request", map[string]any{
 		"email":      user.Email,
 		"userId":     user.ID,

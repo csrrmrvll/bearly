@@ -5,6 +5,7 @@ import (
 	"maps"
 	"net/http"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/csrrmrvll/bearly/internal/accounts"
@@ -16,6 +17,7 @@ import (
 	"github.com/csrrmrvll/bearly/internal/botdetection"
 	"github.com/csrrmrvll/bearly/internal/httpx"
 	"github.com/csrrmrvll/bearly/internal/logging"
+	"github.com/csrrmrvll/bearly/internal/observability"
 	"github.com/csrrmrvll/bearly/internal/templates"
 )
 
@@ -30,24 +32,28 @@ type authPage struct {
 }
 
 type authHandler struct {
-	accounts         *accounts.Store
-	renderer         *templates.Renderer
-	logger           *logging.Logger
-	trustedProxyHops int
-	mfa              *mfa.Store
-	passwordResets   *passwordreset.Store
-	appOrigin        string
+	accounts             *accounts.Store
+	renderer             *templates.Renderer
+	logger               *logging.Logger
+	trustedProxyHops     int
+	mfa                  *mfa.Store
+	passwordResets       *passwordreset.Store
+	appOrigin            string
+	loginTracker         *observability.AuthAlertThreshold
+	passwordResetTracker *observability.AuthAlertThreshold
 }
 
 func newAuthHandler(accountStore *accounts.Store, mfaStore *mfa.Store, passwordResetStore *passwordreset.Store, renderer *templates.Renderer, logger *logging.Logger, appOrigin string, trustedProxyHops int) *authHandler {
 	return &authHandler{
-		accounts:         accountStore,
-		renderer:         renderer,
-		logger:           logger,
-		trustedProxyHops: trustedProxyHops,
-		mfa:              mfaStore,
-		passwordResets:   passwordResetStore,
-		appOrigin:        appOrigin,
+		accounts:             accountStore,
+		renderer:             renderer,
+		logger:               logger,
+		trustedProxyHops:     trustedProxyHops,
+		mfa:                  mfaStore,
+		passwordResets:       passwordResetStore,
+		appOrigin:            appOrigin,
+		loginTracker:         observability.NewAuthAlertThreshold("failed_logins", 3, 5*time.Minute, logger),
+		passwordResetTracker: observability.NewAuthAlertThreshold("password_reset_requests", 3, 10*time.Minute, logger),
 	}
 }
 
@@ -70,11 +76,13 @@ func (handler *authHandler) Login(responseWriter http.ResponseWriter, request *h
 	}
 	password, err := httpx.FormValue(request, "password")
 	if err != nil {
+		handler.loginTracker.Record(requestID(request.Context()), clientIPKeyWithTrustedProxies(handler.trustedProxyHops)(request), nil)
 		handler.invalidForm(responseWriter)
 		return
 	}
 	returnToValue, err := httpx.FormValue(request, "returnTo")
 	if err != nil {
+		handler.loginTracker.Record(requestID(request.Context()), clientIPKeyWithTrustedProxies(handler.trustedProxyHops)(request), nil)
 		handler.invalidForm(responseWriter)
 		return
 	}
@@ -83,10 +91,12 @@ func (handler *authHandler) Login(responseWriter http.ResponseWriter, request *h
 
 	user, found, err := handler.accounts.FindUserByEmail(request.Context(), email)
 	if err != nil {
+		handler.loginTracker.Record(requestID(request.Context()), clientIPKeyWithTrustedProxies(handler.trustedProxyHops)(request), nil)
 		handler.internalError(responseWriter, request, err)
 		return
 	}
 	if !found || !passwords.Verify(password, user.PasswordHash) {
+		handler.loginTracker.Record(requestID(request.Context()), clientIPKeyWithTrustedProxies(handler.trustedProxyHops)(request), nil)
 		handler.logAuthenticationEvent(request, "login_attempt", map[string]any{
 			"email":         email,
 			"success":       false,
@@ -220,6 +230,7 @@ func (handler *authHandler) Signup(responseWriter http.ResponseWriter, request *
 	}
 	challengeToken := totpLoginChallengeToken(request)
 	if err := handler.mfa.DeleteChallenge(request.Context(), challengeToken); err != nil {
+		handler.loginTracker.Record(requestID(request.Context()), clientIPKeyWithTrustedProxies(handler.trustedProxyHops)(request), user.ID)
 		handler.internalError(responseWriter, request, err)
 		return
 	}
