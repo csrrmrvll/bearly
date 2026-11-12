@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/csrrmrvll/bearly/internal/config"
 	"github.com/csrrmrvll/bearly/internal/database"
 	"github.com/joho/godotenv"
 )
@@ -40,12 +41,13 @@ type storedDocument struct {
 
 func main() {
 	_ = godotenv.Load(".env")
-	ctx := context.Background()
-	databasePath := os.Getenv("DATABASE_URL")
-	if databasePath == "" {
-		databasePath = "data/bearly-secure.sqlite"
+	appConfig, err := config.Load(".")
+	if err != nil {
+		writeResult(result{})
+		return
 	}
-	databaseConnection, err := database.Open(ctx, databasePath)
+	ctx := context.Background()
+	databaseConnection, err := database.Open(ctx, appConfig.DatabasePath)
 	if err != nil {
 		writeResult(result{})
 		return
@@ -53,7 +55,7 @@ func main() {
 	defer databaseConnection.Close()
 
 	seeded, seededFound := findDocument(ctx, databaseConnection, "uploaded_files", "mystery-shack-tax-exemption.pdf")
-	seededEncrypted := seededFound && encryptedAtRest(seeded.storagePath)
+	seededEncrypted := seededFound && encryptedAtRest(seeded.storagePath, appConfig.EncryptionKeys, "")
 	mabelClient, err := authenticatedClient(ctx, "mabel@example.com")
 	if err != nil {
 		writeResult(result{})
@@ -64,7 +66,7 @@ func main() {
 	individualContents := []byte("%PDF-1.7\nencrypted individual upload probe")
 	individualStatus := submitUpload(ctx, mabelClient, "/account/tax-exemption/files", "document", individualName, individualContents)
 	individual, individualFound := findDocument(ctx, databaseConnection, "uploaded_files", individualName)
-	individualEncrypted := individualStatus == http.StatusFound && individualFound && encryptedAtRest(individual.storagePath)
+	individualEncrypted := individualStatus == http.StatusFound && individualFound && encryptedAtRest(individual.storagePath, appConfig.EncryptionKeys, appConfig.ActiveEncryptionKeyVersion)
 	individualReadable := individualFound && signedDownloadMatches(ctx, mabelClient, individual.id, individualContents)
 	tamperedRejected := individualFound && tamperedDownloadRejected(ctx, mabelClient, individual)
 
@@ -81,7 +83,7 @@ func main() {
 		return
 	}
 	imported, importedFound := findDocument(ctx, databaseConnection, "imported_tax_documents", archiveName)
-	importedEncrypted := importedFound && encryptedAtRest(imported.storagePath)
+	importedEncrypted := importedFound && encryptedAtRest(imported.storagePath, appConfig.EncryptionKeys, appConfig.ActiveEncryptionKeyVersion)
 	importedReadable := importedFound && downloadMatches(ctx, supportClient, "/support/files/imports/"+strconv.FormatInt(imported.id, 10)+"/download", archiveContents)
 
 	fixtureContents, fixtureErr := os.ReadFile(filepath.Join("data", "fixtures", "mystery-shack-tax-exemption.pdf"))
@@ -105,7 +107,7 @@ func findDocument(ctx context.Context, databaseConnection *sql.DB, tableName, or
 	return document, err == nil
 }
 
-func encryptedAtRest(storagePath string) bool {
+func encryptedAtRest(storagePath string, encryptionKeys map[string][32]byte, requiredVersion string) bool {
 	contents, err := os.ReadFile(storagePath)
 	if err != nil || filepath.Ext(storagePath) != ".enc" || bytes.Contains(contents, []byte("%PDF")) {
 		return false
@@ -113,7 +115,11 @@ func encryptedAtRest(storagePath string) bool {
 	var envelope struct {
 		KeyVersion string `json:"keyVersion"`
 	}
-	return json.Unmarshal(contents, &envelope) == nil && envelope.KeyVersion == "v1"
+	if json.Unmarshal(contents, &envelope) != nil {
+		return false
+	}
+	_, configured := encryptionKeys[envelope.KeyVersion]
+	return configured && (requiredVersion == "" || envelope.KeyVersion == requiredVersion)
 }
 
 func tamperedDownloadRejected(ctx context.Context, client *http.Client, document storedDocument) bool {

@@ -9,12 +9,19 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
+
+	"github.com/csrrmrvll/bearly/internal/auth/passwords"
+	"github.com/csrrmrvll/bearly/internal/database"
+	"github.com/csrrmrvll/bearly/internal/httpserver"
+	"github.com/csrrmrvll/bearly/internal/logging"
+	"github.com/csrrmrvll/bearly/internal/storage"
 )
 
-const applicationOrigin = "http://localhost:3030"
+const applicationOrigin = "http://bearly-secure.test"
 
 type checkResult struct {
 	FailedLoginAlertAtThreshold   bool `json:"failedLoginAlertAtThreshold"`
@@ -35,7 +42,10 @@ type responseObservation struct {
 }
 
 func main() {
-	result, err := checkAuthenticationAlerts(context.Background(), applicationOrigin)
+	resultOutput := os.Stdout
+	os.Stdout = os.Stderr
+	result, err := runIsolatedProbe(context.Background())
+	os.Stdout = resultOutput
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -44,21 +54,76 @@ func main() {
 	}
 }
 
-func checkAuthenticationAlerts(ctx context.Context, origin string) (checkResult, error) {
-	logPath := filepath.Join("data", "bearly-secure.log")
+func runIsolatedProbe(ctx context.Context) (checkResult, error) {
+	projectRoot, err := os.Getwd()
+	if err != nil {
+		return checkResult{}, fmt.Errorf("get project root: %w", err)
+	}
+	runtimeDirectory, err := os.MkdirTemp("", "bearly-secure-auth-alerts-")
+	if err != nil {
+		return checkResult{}, fmt.Errorf("create alert-check directory: %w", err)
+	}
+	defer os.RemoveAll(runtimeDirectory)
+
+	databaseConnection, err := database.Open(ctx, filepath.Join(runtimeDirectory, "lesson-check.sqlite"))
+	if err != nil {
+		return checkResult{}, err
+	}
+	defer databaseConnection.Close()
+	if err := database.Migrate(ctx, databaseConnection); err != nil {
+		return checkResult{}, err
+	}
+	passwordHash, err := passwords.Hash("password123")
+	if err != nil {
+		return checkResult{}, err
+	}
+	if _, err := databaseConnection.ExecContext(ctx, `
+		INSERT INTO users (email, display_name, role, password_hash, totp_secret)
+		VALUES ('mabel@example.com', 'Mabel Pines', 'customer', ?, NULL),
+		       ('wendy@example.com', 'Wendy Corduroy', 'customer', ?, ?)
+	`, passwordHash, passwordHash, "KXDYU6DRQPRQXLPY236SJJXPNGHQJVUF"); err != nil {
+		return checkResult{}, fmt.Errorf("seed alert-check users: %w", err)
+	}
+
+	logPath := filepath.Join(runtimeDirectory, "lesson-check.log")
+	appLogger, err := logging.Open(logPath)
+	if err != nil {
+		return checkResult{}, err
+	}
+	defer appLogger.Close()
+	var encryptionKey [32]byte
+	encryptionKey[0] = 1
+	encryptionKeyring, err := storage.NewKeyring("v1", map[string][32]byte{"v1": encryptionKey})
+	if err != nil {
+		return checkResult{}, err
+	}
+	application, err := httpserver.New(databaseConnection, appLogger, httpserver.Options{
+		AppOrigin:               applicationOrigin,
+		MaxPublicProductResults: 50,
+		MaxRequestBodyBytes:     32 * 1024,
+		MaxUploadBytes:          1024 * 1024,
+		PawPalAPIKey:            "lesson-check",
+		EncryptionKeyring:       encryptionKeyring,
+		DataDirectory:           runtimeDirectory,
+		FixtureDirectory:        filepath.Join(projectRoot, "data", "fixtures"),
+		TemplateDirectory:       filepath.Join(projectRoot, "web", "templates"),
+		PublicDirectory:         filepath.Join(projectRoot, "web", "public"),
+	})
+	if err != nil {
+		return checkResult{}, err
+	}
+	defer application.Close()
+	return checkAuthenticationAlerts(ctx, application.Handler, logPath)
+}
+
+func checkAuthenticationAlerts(ctx context.Context, applicationHandler http.Handler, logPath string) (checkResult, error) {
 	logOffset, err := logSize(logPath)
 	if err != nil {
 		return checkResult{}, err
 	}
-	httpClient := &http.Client{
-		CheckRedirect: func(_ *http.Request, _ []*http.Request) error {
-			return http.ErrUseLastResponse
-		},
-	}
-
 	failedLogins := make([]responseObservation, 0, 2)
 	for attempt := range 2 {
-		observation, err := postForm(ctx, httpClient, origin+"/login", url.Values{
+		observation, err := postForm(ctx, applicationHandler, "/login", url.Values{
 			"email":    {fmt.Sprintf("failed-login-%d@example.com", attempt)},
 			"password": {"incorrect-password"},
 		}, nil)
@@ -67,14 +132,14 @@ func checkAuthenticationAlerts(ctx context.Context, origin string) (checkResult,
 		}
 		failedLogins = append(failedLogins, observation)
 	}
-	successfulLogin, err := postForm(ctx, httpClient, origin+"/login", url.Values{
+	successfulLogin, err := postForm(ctx, applicationHandler, "/login", url.Values{
 		"email":    {"mabel@example.com"},
 		"password": {"password123"},
 	}, nil)
 	if err != nil {
 		return checkResult{}, err
 	}
-	totpPasswordStep, err := postForm(ctx, httpClient, origin+"/login", url.Values{
+	totpPasswordStep, err := postForm(ctx, applicationHandler, "/login", url.Values{
 		"email":    {"wendy@example.com"},
 		"password": {"password123"},
 	}, nil)
@@ -89,7 +154,7 @@ func checkAuthenticationAlerts(ctx context.Context, origin string) (checkResult,
 	if err != nil {
 		return checkResult{}, err
 	}
-	failedTOTP, err := postForm(ctx, httpClient, origin+"/login/totp", url.Values{
+	failedTOTP, err := postForm(ctx, applicationHandler, "/login/totp", url.Values{
 		"mfaCode": {"not-a-code"},
 	}, []*http.Cookie{challengeCookie})
 	if err != nil {
@@ -98,7 +163,7 @@ func checkAuthenticationAlerts(ctx context.Context, origin string) (checkResult,
 
 	unknownResets := make([]responseObservation, 0, 2)
 	for attempt := range 2 {
-		observation, err := postForm(ctx, httpClient, origin+"/password-reset", url.Values{
+		observation, err := postForm(ctx, applicationHandler, "/password-reset", url.Values{
 			"email": {fmt.Sprintf("password-reset-%d@example.com", attempt)},
 		}, nil)
 		if err != nil {
@@ -106,7 +171,7 @@ func checkAuthenticationAlerts(ctx context.Context, origin string) (checkResult,
 		}
 		unknownResets = append(unknownResets, observation)
 	}
-	knownReset, err := postForm(ctx, httpClient, origin+"/password-reset", url.Values{
+	knownReset, err := postForm(ctx, applicationHandler, "/password-reset", url.Values{
 		"email": {"mabel@example.com"},
 	}, nil)
 	if err != nil {
@@ -130,20 +195,20 @@ func checkAuthenticationAlerts(ctx context.Context, origin string) (checkResult,
 	}, nil
 }
 
-func postForm(ctx context.Context, httpClient *http.Client, endpoint string, form url.Values, cookies []*http.Cookie) (responseObservation, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBufferString(form.Encode()))
+func postForm(ctx context.Context, applicationHandler http.Handler, endpoint string, form url.Values, cookies []*http.Cookie) (responseObservation, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, applicationOrigin+endpoint, bytes.NewBufferString(form.Encode()))
 	if err != nil {
 		return responseObservation{}, fmt.Errorf("create request for %s: %w", endpoint, err)
 	}
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Origin", applicationOrigin)
+	request.RemoteAddr = "192.0.2.10:12345"
 	for _, cookie := range cookies {
 		request.AddCookie(cookie)
 	}
-	response, err := httpClient.Do(request)
-	if err != nil {
-		return responseObservation{}, fmt.Errorf("post form to %s: %w", endpoint, err)
-	}
+	recorder := httptest.NewRecorder()
+	applicationHandler.ServeHTTP(recorder, request)
+	response := recorder.Result()
 	defer response.Body.Close()
 	if _, err := io.Copy(io.Discard, response.Body); err != nil {
 		return responseObservation{}, fmt.Errorf("read response from %s: %w", endpoint, err)
