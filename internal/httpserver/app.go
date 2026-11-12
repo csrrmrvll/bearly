@@ -120,6 +120,7 @@ func New(database *sql.DB, logger *logging.Logger, options Options) (*Applicatio
 		options.MaxUploadBytes,
 	)
 	authenticationHandler := newAuthHandler(accountStore, mfaStore, passwordResetStore, renderer, logger, options.AppOrigin, options.TrustedProxyHops)
+	securityHandler := newAuthHandler(accountStore, mfaStore, passwordResetStore, renderer, logger, options.AppOrigin, options.TrustedProxyHops)
 	passkeyHandler, err := passkeys.NewHandler(
 		options.AppOrigin,
 		accountStore,
@@ -177,6 +178,7 @@ func New(database *sql.DB, logger *logging.Logger, options Options) (*Applicatio
 	})
 
 	dynamicMux := http.NewServeMux()
+	dynamicMux.HandleFunc("GET /.well-known/security.txt", securityHandler.SecurityTxt)
 	dynamicMux.HandleFunc("GET /{$}", storefrontHandler.Storefront)
 	dynamicMux.Handle("GET /search", SearchThrottle(renderer)(http.HandlerFunc(storefrontHandler.Search)))
 	dynamicMux.HandleFunc("GET /products/{id}", storefrontHandler.Product)

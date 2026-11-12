@@ -57,6 +57,16 @@ func newAuthHandler(accountStore *accounts.Store, mfaStore *mfa.Store, passwordR
 	}
 }
 
+func (handler *authHandler) SecurityTxt(responseWriter http.ResponseWriter, request *http.Request) {
+	responseWriter.Header().Set("Content-Type", "text/plain")
+	expireationTimestamp := time.Now().Add(180 * 24 * 60 * time.Minute).UTC().Format(time.RFC3339)
+	responseWriter.Header().Set("Cache-Control", "public, max-age=86400")
+	responseWriter.Header().Set("Expires", expireationTimestamp)
+	if _, err := responseWriter.Write([]byte("Contact: mailto:security@bearlysecure.example\nPolicy: https://bearlysecure.example/security-policy\nExpires: " + expireationTimestamp)); err != nil {
+		handler.internalError(responseWriter, request, err)
+	}
+}
+
 func (handler *authHandler) LoginPage(responseWriter http.ResponseWriter, request *http.Request) {
 	returnTo := safeReturnTo(strings.Join(request.URL.Query()["returnTo"], ","))
 	errorMessage := ""
