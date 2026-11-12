@@ -1,13 +1,13 @@
 module github.com/csrrmrvll/bearly
 
-go 1.27.3
+go 1.27.4
 
 require (
 	github.com/go-webauthn/webauthn v0.17.4
 	github.com/joho/godotenv v1.5.1
 	github.com/pquerna/otp v1.4.0
 	github.com/pressly/goose/v3 v3.27.3
-	golang.org/x/crypto v0.56.0
+	golang.org/x/crypto v0.58.1-0.20261009181718-2f1f834330b2
 	modernc.org/sqlite v1.56.0
 )
 
@@ -30,7 +30,7 @@ require (
 	github.com/x448/float16 v0.8.4 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
-	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 	modernc.org/libc v1.74.4 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
