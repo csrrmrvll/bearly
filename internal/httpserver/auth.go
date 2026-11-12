@@ -32,28 +32,28 @@ type authPage struct {
 }
 
 type authHandler struct {
-	accounts             *accounts.Store
-	renderer             *templates.Renderer
-	logger               *logging.Logger
-	trustedProxyHops     int
-	mfa                  *mfa.Store
-	passwordResets       *passwordreset.Store
-	appOrigin            string
-	loginTracker         *observability.AuthAlertThreshold
-	passwordResetTracker *observability.AuthAlertThreshold
+	accounts          *accounts.Store
+	renderer          *templates.Renderer
+	logger            *logging.Logger
+	trustedProxyHops  int
+	failedLoginAlerts *observability.AuthAlertThreshold
+	resetAlerts       *observability.AuthAlertThreshold
+	mfa               *mfa.Store
+	passwordResets    *passwordreset.Store
+	appOrigin         string
 }
 
 func newAuthHandler(accountStore *accounts.Store, mfaStore *mfa.Store, passwordResetStore *passwordreset.Store, renderer *templates.Renderer, logger *logging.Logger, appOrigin string, trustedProxyHops int) *authHandler {
 	return &authHandler{
-		accounts:             accountStore,
-		renderer:             renderer,
-		logger:               logger,
-		trustedProxyHops:     trustedProxyHops,
-		mfa:                  mfaStore,
-		passwordResets:       passwordResetStore,
-		appOrigin:            appOrigin,
-		loginTracker:         observability.NewAuthAlertThreshold("failed_logins", 3, 5*time.Minute, logger),
-		passwordResetTracker: observability.NewAuthAlertThreshold("password_reset_requests", 3, 10*time.Minute, logger),
+		accounts:          accountStore,
+		renderer:          renderer,
+		logger:            logger,
+		trustedProxyHops:  trustedProxyHops,
+		failedLoginAlerts: observability.NewAuthAlertThreshold("failed_logins", 3, 5*time.Minute, logger),
+		resetAlerts:       observability.NewAuthAlertThreshold("password_reset_requests", 3, 10*time.Minute, logger),
+		mfa:               mfaStore,
+		passwordResets:    passwordResetStore,
+		appOrigin:         appOrigin,
 	}
 }
 
@@ -76,13 +76,11 @@ func (handler *authHandler) Login(responseWriter http.ResponseWriter, request *h
 	}
 	password, err := httpx.FormValue(request, "password")
 	if err != nil {
-		handler.loginTracker.Record(requestID(request.Context()), clientIPKeyWithTrustedProxies(handler.trustedProxyHops)(request), nil)
 		handler.invalidForm(responseWriter)
 		return
 	}
 	returnToValue, err := httpx.FormValue(request, "returnTo")
 	if err != nil {
-		handler.loginTracker.Record(requestID(request.Context()), clientIPKeyWithTrustedProxies(handler.trustedProxyHops)(request), nil)
 		handler.invalidForm(responseWriter)
 		return
 	}
@@ -91,18 +89,22 @@ func (handler *authHandler) Login(responseWriter http.ResponseWriter, request *h
 
 	user, found, err := handler.accounts.FindUserByEmail(request.Context(), email)
 	if err != nil {
-		handler.loginTracker.Record(requestID(request.Context()), clientIPKeyWithTrustedProxies(handler.trustedProxyHops)(request), nil)
 		handler.internalError(responseWriter, request, err)
 		return
 	}
 	if !found || !passwords.Verify(password, user.PasswordHash) {
-		handler.loginTracker.Record(requestID(request.Context()), clientIPKeyWithTrustedProxies(handler.trustedProxyHops)(request), nil)
+		userID := nullableInt64(user.ID, found)
 		handler.logAuthenticationEvent(request, "login_attempt", map[string]any{
 			"email":         email,
 			"success":       false,
 			"failureReason": loginFailureReason(found),
 			"returnTo":      returnTo,
 		})
+		handler.failedLoginAlerts.Record(
+			requestID(request.Context()),
+			clientIPKeyWithTrustedProxies(handler.trustedProxyHops)(request),
+			userID,
+		)
 		if err := handler.renderLogin(responseWriter, http.StatusUnauthorized, "Invalid email or password", returnTo); err != nil {
 			handler.internalError(responseWriter, request, err)
 		}
@@ -230,7 +232,6 @@ func (handler *authHandler) Signup(responseWriter http.ResponseWriter, request *
 	}
 	challengeToken := totpLoginChallengeToken(request)
 	if err := handler.mfa.DeleteChallenge(request.Context(), challengeToken); err != nil {
-		handler.loginTracker.Record(requestID(request.Context()), clientIPKeyWithTrustedProxies(handler.trustedProxyHops)(request), user.ID)
 		handler.internalError(responseWriter, request, err)
 		return
 	}
