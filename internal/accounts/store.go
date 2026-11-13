@@ -235,11 +235,11 @@ func (store *Store) CartQuantities(ctx context.Context, userID int64) (map[int64
 }
 
 func (store *Store) RevokeAllActiveSessions(ctx context.Context) (int, error) {
-	rowsAffected, err := store.queries.RevokeAllActiveSessions(ctx)
+	revokedCount, err := store.queries.RevokeAllActiveSessions(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("revoke all active sessions: %w", err)
 	}
-	return int(rowsAffected), nil
+	return int(revokedCount), nil
 }
 
 func HashSessionToken(token string) string {
